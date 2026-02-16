@@ -1,11 +1,13 @@
 import React, { useMemo } from 'react';
 import { useTournamentStore } from '../store/useTournamentStore';
 import { initialGroups } from '../data/groups';
+import { countries } from '../data/countries';
 import { generateGroupMatches, getQualifiedTeams } from '../utils/calculations';
 import { getKnockoutMatchups, generateBracket } from '../utils/knockoutLogic';
 import { KnockoutMatchCard } from '../components/KnockoutMatchCard';
 import { MatchResult, KnockoutMatch } from '../types';
 import { useNavigate } from 'react-router-dom';
+import { FlagIcon } from '../components/FlagIcon';
 
 export const KnockoutPage: React.FC = () => {
   const { qualifiers, groups, knockout, setKnockoutMatch } = useTournamentStore();
@@ -43,10 +45,6 @@ export const KnockoutPage: React.FC = () => {
     const fullBracket = generateBracket(r32);
 
     // Propagate winners
-    // We iterate through the bracket (which is topologically sorted by round)
-    // and update next matches.
-    
-    // Create a map for quick access
     const matchMap = new Map<string, KnockoutMatch>();
     fullBracket.forEach(m => matchMap.set(m.id, m));
 
@@ -82,7 +80,7 @@ export const KnockoutPage: React.FC = () => {
     setKnockoutMatch(matchId, result);
   };
 
-  // Group matches by round for rendering
+  // Group matches by round
   const rounds = {
       roundOf32: bracketData.filter(m => m.round === 'roundOf32'),
       roundOf16: bracketData.filter(m => m.round === 'roundOf16'),
@@ -91,50 +89,98 @@ export const KnockoutPage: React.FC = () => {
       final: bracketData.filter(m => m.round === 'final')
   };
 
+  // Split into Left and Right
+  const leftSide = {
+      r32: rounds.roundOf32.slice(0, 8),
+      r16: rounds.roundOf16.slice(0, 4),
+      qf: rounds.quarterFinals.slice(0, 2),
+      sf: rounds.semiFinals[0]
+  };
+
+  const rightSide = {
+      r32: rounds.roundOf32.slice(8, 16),
+      r16: rounds.roundOf16.slice(4, 8),
+      qf: rounds.quarterFinals.slice(2, 4),
+      sf: rounds.semiFinals[1]
+  };
+
+  const finalMatch = rounds.final[0];
+  const championCode = finalMatch?.winner;
+  const champion = championCode ? countries[championCode] : null;
+
+  const renderColumn = (matches: KnockoutMatch[], title: string) => (
+      <div className="flex flex-col justify-around min-w-[220px] px-2">
+          <h3 className="text-center font-bold mb-4 text-gray-700">{title}</h3>
+          {matches.map(m => (
+              <KnockoutMatchCard key={m.id} match={m} onUpdate={(r) => handleUpdate(m.id, r)} />
+          ))}
+      </div>
+  );
+
   return (
-    <div className="min-h-screen bg-gray-50 overflow-x-auto">
-      <div className="container mx-auto px-4 py-8 min-w-[1200px]">
-        <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">Fase Eliminatoria</h1>
+    <div className="min-h-screen bg-gray-50 overflow-x-auto pb-12">
+      <div className="min-w-[2000px] px-8 py-8">
+        <h1 className="text-3xl font-bold text-center mb-12 text-gray-800">Fase Eliminatoria</h1>
         
-        <div className="flex justify-between space-x-8">
-            {/* Round of 32 */}
-            <div className="flex flex-col justify-around">
-                <h3 className="text-center font-bold mb-4">Dieciseisavos</h3>
-                {rounds.roundOf32.map(m => (
-                    <KnockoutMatchCard key={m.id} match={m} onUpdate={(r) => handleUpdate(m.id, r)} />
-                ))}
+        <div className="flex justify-center items-stretch">
+            {/* LEFT SIDE */}
+            <div className="flex space-x-2">
+                {renderColumn(leftSide.r32, '16avos')}
+                {renderColumn(leftSide.r16, '8avos')}
+                {renderColumn(leftSide.qf, 'Cuartos')}
+                
+                {/* Left Semi */}
+                <div className="flex flex-col justify-center min-w-[220px] px-2">
+                     <h3 className="text-center font-bold mb-4 text-gray-700">Semifinal</h3>
+                     {leftSide.sf && (
+                         <KnockoutMatchCard match={leftSide.sf} onUpdate={(r) => handleUpdate(leftSide.sf.id, r)} />
+                     )}
+                </div>
             </div>
 
-            {/* Round of 16 */}
-            <div className="flex flex-col justify-around">
-                <h3 className="text-center font-bold mb-4">Octavos</h3>
-                {rounds.roundOf16.map(m => (
-                    <KnockoutMatchCard key={m.id} match={m} onUpdate={(r) => handleUpdate(m.id, r)} />
-                ))}
+            {/* CENTER - FINAL & CHAMPION */}
+            <div className="flex flex-col justify-center items-center min-w-[350px] px-8 mx-4 border-l border-r border-gray-200 bg-white/50 rounded-xl">
+                <h3 className="text-center font-bold mb-8 text-2xl text-blue-900 uppercase tracking-wider">Gran Final</h3>
+                {finalMatch && (
+                    <div className="transform scale-125 mb-12 shadow-2xl rounded-lg">
+                         <KnockoutMatchCard match={finalMatch} onUpdate={(r) => handleUpdate(finalMatch.id, r)} />
+                    </div>
+                )}
+                
+                {champion ? (
+                    <div className="text-center animate-fade-in-up">
+                        <div className="text-6xl mb-4 drop-shadow-lg">🏆</div>
+                        <h2 className="text-2xl font-bold text-gray-500 uppercase tracking-widest mb-2">Campeón Mundial</h2>
+                        <div className="flex flex-col items-center">
+                             <div className="text-8xl mb-4 filter drop-shadow-md">
+                                <FlagIcon code={champion.flag} />
+                             </div>
+                             <div className="text-4xl font-black text-gray-900 tracking-tight">
+                                {champion.name}
+                             </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="text-center opacity-30">
+                        <div className="text-6xl mb-4">🏆</div>
+                        <h2 className="text-xl font-bold">Por definir</h2>
+                    </div>
+                )}
             </div>
 
-            {/* Quarter Finals */}
-            <div className="flex flex-col justify-around">
-                <h3 className="text-center font-bold mb-4">Cuartos</h3>
-                {rounds.quarterFinals.map(m => (
-                    <KnockoutMatchCard key={m.id} match={m} onUpdate={(r) => handleUpdate(m.id, r)} />
-                ))}
-            </div>
-
-            {/* Semi Finals */}
-            <div className="flex flex-col justify-around">
-                <h3 className="text-center font-bold mb-4">Semifinales</h3>
-                {rounds.semiFinals.map(m => (
-                    <KnockoutMatchCard key={m.id} match={m} onUpdate={(r) => handleUpdate(m.id, r)} />
-                ))}
-            </div>
-
-            {/* Final */}
-            <div className="flex flex-col justify-around">
-                <h3 className="text-center font-bold mb-4">Final</h3>
-                {rounds.final.map(m => (
-                    <KnockoutMatchCard key={m.id} match={m} onUpdate={(r) => handleUpdate(m.id, r)} />
-                ))}
+            {/* RIGHT SIDE */}
+            <div className="flex space-x-2 flex-row-reverse">
+                {renderColumn(rightSide.r32, '16avos')}
+                {renderColumn(rightSide.r16, '8avos')}
+                {renderColumn(rightSide.qf, 'Cuartos')}
+                
+                {/* Right Semi */}
+                <div className="flex flex-col justify-center min-w-[220px] px-2">
+                     <h3 className="text-center font-bold mb-4 text-gray-700">Semifinal</h3>
+                     {rightSide.sf && (
+                         <KnockoutMatchCard match={rightSide.sf} onUpdate={(r) => handleUpdate(rightSide.sf.id, r)} />
+                     )}
+                </div>
             </div>
         </div>
       </div>
