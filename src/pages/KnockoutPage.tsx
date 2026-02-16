@@ -109,80 +109,97 @@ export const KnockoutPage: React.FC = () => {
   const champion = championCode ? countries[championCode] : null;
 
   const renderColumn = (matches: KnockoutMatch[], title: string) => (
-      <div className="flex flex-col justify-around min-w-[220px] px-2">
-          <h3 className="text-center font-bold mb-4 text-gray-700">{title}</h3>
-          {matches.map(m => (
-              <KnockoutMatchCard key={m.id} match={m} onUpdate={(r) => handleUpdate(m.id, r)} />
-          ))}
+      <div className="flex flex-col h-full px-1 items-center">
+          <div className="h-10 flex items-center justify-center w-full">
+              <h3 className="font-bold text-gray-700 text-sm uppercase tracking-tight">{title}</h3>
+          </div>
+          <div className="flex-1 flex flex-col justify-around py-2">
+              {matches.map(m => (
+                  <KnockoutMatchCard key={m.id} match={m} onUpdate={(r) => handleUpdate(m.id, r)} />
+              ))}
+          </div>
       </div>
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 overflow-x-auto pb-12">
-      <div className="min-w-[2000px] px-8 py-8">
-        <h1 className="text-3xl font-bold text-center mb-12 text-gray-800">Fase Eliminatoria</h1>
-        
-        <div className="flex justify-center items-stretch">
+    <div className="h-screen bg-gray-50 overflow-x-auto overflow-y-hidden flex flex-col">
+      <div className="flex-none p-4">
+          <h1 className="text-2xl font-bold text-center text-gray-800">Fase Eliminatoria</h1>
+      </div>
+      
+      <div className="flex-1 min-w-max px-4 pb-4 flex justify-center items-stretch">
             {/* LEFT SIDE */}
-            <div className="flex space-x-2">
+            <div className="flex">
                 {renderColumn(leftSide.r32, '16avos')}
                 {renderColumn(leftSide.r16, '8avos')}
                 {renderColumn(leftSide.qf, 'Cuartos')}
                 
                 {/* Left Semi */}
-                <div className="flex flex-col justify-center min-w-[220px] px-2">
-                     <h3 className="text-center font-bold mb-4 text-gray-700">Semifinal</h3>
-                     {leftSide.sf && (
-                         <KnockoutMatchCard match={leftSide.sf} onUpdate={(r) => handleUpdate(leftSide.sf.id, r)} />
-                     )}
+                <div className="flex flex-col h-full px-1 items-center">
+                     <div className="h-10 flex items-center justify-center w-full">
+                        <h3 className="font-bold text-gray-700 text-sm uppercase tracking-tight">Semifinal</h3>
+                     </div>
+                     <div className="flex-1 flex flex-col justify-around py-2">
+                         {leftSide.sf && (
+                             <KnockoutMatchCard match={leftSide.sf} onUpdate={(r) => handleUpdate(leftSide.sf.id, r)} />
+                         )}
+                     </div>
                 </div>
             </div>
 
             {/* CENTER - FINAL & CHAMPION */}
-            <div className="flex flex-col justify-center items-center min-w-[350px] px-8 mx-4 border-l border-r border-gray-200 bg-white/50 rounded-xl">
-                <h3 className="text-center font-bold mb-8 text-2xl text-blue-900 uppercase tracking-wider">Gran Final</h3>
-                {finalMatch && (
-                    <div className="transform scale-125 mb-12 shadow-2xl rounded-lg">
-                         <KnockoutMatchCard match={finalMatch} onUpdate={(r) => handleUpdate(finalMatch.id, r)} />
-                    </div>
-                )}
+            <div className="flex flex-col h-full px-4 mx-2 border-l border-r border-gray-200 bg-white/50 rounded-xl min-w-[300px]">
+                <div className="h-10 flex items-center justify-center w-full">
+                    <h3 className="font-bold text-blue-900 text-lg uppercase tracking-wider">Gran Final</h3>
+                </div>
                 
-                {champion ? (
-                    <div className="text-center animate-fade-in-up">
-                        <div className="text-6xl mb-4 drop-shadow-lg">🏆</div>
-                        <h2 className="text-2xl font-bold text-gray-500 uppercase tracking-widest mb-2">Campeón Mundial</h2>
-                        <div className="flex flex-col items-center">
-                             <div className="text-8xl mb-4 filter drop-shadow-md">
-                                <FlagIcon code={champion.flag} />
-                             </div>
-                             <div className="text-4xl font-black text-gray-900 tracking-tight">
-                                {champion.name}
-                             </div>
+                <div className="flex-1 flex flex-col justify-center items-center">
+                    {finalMatch && (
+                        <div className="transform scale-110 mb-8 shadow-xl rounded-lg">
+                             <KnockoutMatchCard match={finalMatch} onUpdate={(r) => handleUpdate(finalMatch.id, r)} />
                         </div>
-                    </div>
-                ) : (
-                    <div className="text-center opacity-30">
-                        <div className="text-6xl mb-4">🏆</div>
-                        <h2 className="text-xl font-bold">Por definir</h2>
-                    </div>
-                )}
+                    )}
+                    
+                    {champion ? (
+                        <div className="text-center animate-fade-in-up">
+                            <div className="text-4xl mb-2 drop-shadow-lg">🏆</div>
+                            <h2 className="text-lg font-bold text-gray-500 uppercase tracking-widest mb-1">Campeón</h2>
+                            <div className="flex flex-col items-center">
+                                 <div className="text-6xl mb-2 filter drop-shadow-md">
+                                    <FlagIcon code={champion.flag} />
+                                 </div>
+                                 <div className="text-2xl font-black text-gray-900 tracking-tight leading-none">
+                                    {champion.name}
+                                 </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="text-center opacity-30">
+                            <div className="text-4xl mb-2">🏆</div>
+                            <h2 className="text-lg font-bold">Por definir</h2>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* RIGHT SIDE */}
-            <div className="flex space-x-2 flex-row-reverse">
+            <div className="flex flex-row-reverse">
                 {renderColumn(rightSide.r32, '16avos')}
                 {renderColumn(rightSide.r16, '8avos')}
                 {renderColumn(rightSide.qf, 'Cuartos')}
                 
                 {/* Right Semi */}
-                <div className="flex flex-col justify-center min-w-[220px] px-2">
-                     <h3 className="text-center font-bold mb-4 text-gray-700">Semifinal</h3>
-                     {rightSide.sf && (
-                         <KnockoutMatchCard match={rightSide.sf} onUpdate={(r) => handleUpdate(rightSide.sf.id, r)} />
-                     )}
+                <div className="flex flex-col h-full px-1 items-center">
+                     <div className="h-10 flex items-center justify-center w-full">
+                        <h3 className="font-bold text-gray-700 text-sm uppercase tracking-tight">Semifinal</h3>
+                     </div>
+                     <div className="flex-1 flex flex-col justify-around py-2">
+                         {rightSide.sf && (
+                             <KnockoutMatchCard match={rightSide.sf} onUpdate={(r) => handleUpdate(rightSide.sf.id, r)} />
+                         )}
+                     </div>
                 </div>
             </div>
-        </div>
       </div>
     </div>
   );
