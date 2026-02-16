@@ -109,13 +109,13 @@ export const KnockoutPage: React.FC = () => {
   const champion = championCode ? countries[championCode] : null;
 
   const renderColumn = (matches: KnockoutMatch[], title: string, isRightSide: boolean = false) => (
-      <div className={`flex flex-col h-full items-center relative z-0 ${isRightSide ? '-mr-8' : '-ml-8'} first:ml-0 first:mr-0`}>
+      <div className={`flex flex-col h-full items-center relative z-0 ${isRightSide ? '-mr-8 xl:mr-0' : '-ml-8 xl:ml-0'} transition-all duration-300 first:ml-0 first:mr-0 shrink-0`}>
           <div className="h-10 flex items-center justify-center w-full relative z-10">
-              <h3 className="font-bold text-gray-700 text-sm uppercase tracking-tight bg-gray-50/80 px-2 rounded backdrop-blur-sm">{title}</h3>
+              <h3 className="font-bold text-gray-700 text-sm uppercase tracking-tight bg-gray-50/80 px-2 rounded backdrop-blur-sm whitespace-nowrap">{title}</h3>
           </div>
           <div className="flex-1 flex flex-col justify-around py-2 w-36">
               {matches.map(m => (
-                  <div key={m.id} className="relative transition-transform hover:scale-105 hover:z-20">
+                  <div key={m.id} className="relative transition-transform hover:scale-105 hover:z-50">
                     <KnockoutMatchCard match={m} onUpdate={(r) => handleUpdate(m.id, r)} />
                   </div>
               ))}
@@ -124,26 +124,27 @@ export const KnockoutPage: React.FC = () => {
   );
 
   return (
-    <div className="h-screen bg-gray-50 overflow-x-auto overflow-y-hidden flex flex-col">
-      <div className="flex-none p-4">
+    <div className="h-screen bg-gray-50 overflow-hidden flex flex-col">
+      <div className="flex-none p-4 bg-white shadow-sm z-20">
           <h1 className="text-2xl font-bold text-center text-gray-800">Fase Eliminatoria</h1>
       </div>
       
-      <div className="flex-1 min-w-max px-4 pb-4 flex justify-center items-stretch">
+      <div className="flex-1 w-full px-4 pb-4 overflow-x-auto overflow-y-hidden">
+        <div className="h-full min-w-fit flex justify-center items-stretch mx-auto">
             {/* LEFT SIDE */}
-            <div className="flex -space-x-12 pl-8">
+            <div className="flex -space-x-12 xl:space-x-2 pl-8 transition-all duration-300">
                 {renderColumn(leftSide.r32, '16avos')}
                 {renderColumn(leftSide.r16, '8avos')}
                 {renderColumn(leftSide.qf, 'Cuartos')}
                 
                 {/* Left Semi */}
-                <div className="flex flex-col h-full items-center relative z-0 -ml-8">
+                <div className="flex flex-col h-full items-center relative z-0 -ml-8 xl:ml-0 shrink-0">
                      <div className="h-10 flex items-center justify-center w-full relative z-10">
                         <h3 className="font-bold text-gray-700 text-sm uppercase tracking-tight bg-gray-50/80 px-2 rounded backdrop-blur-sm">Semifinal</h3>
                      </div>
                      <div className="flex-1 flex flex-col justify-around py-2 w-36">
                          {leftSide.sf && (
-                             <div className="relative transition-transform hover:scale-105 hover:z-20">
+                             <div className="relative transition-transform hover:scale-105 hover:z-50">
                                 <KnockoutMatchCard match={leftSide.sf} onUpdate={(r) => handleUpdate(leftSide.sf.id, r)} />
                              </div>
                          )}
@@ -152,14 +153,14 @@ export const KnockoutPage: React.FC = () => {
             </div>
 
             {/* CENTER - FINAL & CHAMPION */}
-            <div className="flex flex-col h-full px-4 mx-2 border-l border-r border-gray-200 bg-white/50 rounded-xl min-w-[300px] z-10 relative">
+            <div className="flex flex-col h-full px-4 mx-2 border-l border-r border-gray-200 bg-white/50 rounded-xl min-w-[300px] z-10 relative shrink-0">
                 <div className="h-10 flex items-center justify-center w-full">
                     <h3 className="font-bold text-blue-900 text-lg uppercase tracking-wider">Gran Final</h3>
                 </div>
                 
                 <div className="flex-1 flex flex-col justify-center items-center">
                     {finalMatch && (
-                        <div className="transform scale-110 mb-8 shadow-xl rounded-lg bg-white">
+                        <div className="transform scale-110 mb-8 shadow-xl rounded-lg bg-white relative z-20">
                              <KnockoutMatchCard match={finalMatch} onUpdate={(r) => handleUpdate(finalMatch.id, r)} />
                         </div>
                     )}
@@ -172,7 +173,7 @@ export const KnockoutPage: React.FC = () => {
                                  <div className="text-6xl mb-2 filter drop-shadow-md">
                                     <FlagIcon code={champion.flag} />
                                  </div>
-                                 <div className="text-2xl font-black text-gray-900 tracking-tight leading-none">
+                                 <div className="text-2xl font-black text-gray-900 tracking-tight leading-none whitespace-nowrap">
                                     {champion.name}
                                  </div>
                             </div>
@@ -187,25 +188,26 @@ export const KnockoutPage: React.FC = () => {
             </div>
 
             {/* RIGHT SIDE */}
-            <div className="flex flex-row-reverse -space-x-12 space-x-reverse pr-8">
+            <div className="flex flex-row-reverse -space-x-12 xl:space-x-2 space-x-reverse pr-8 transition-all duration-300">
                 {renderColumn(rightSide.r32, '16avos', true)}
                 {renderColumn(rightSide.r16, '8avos', true)}
                 {renderColumn(rightSide.qf, 'Cuartos', true)}
                 
                 {/* Right Semi */}
-                <div className="flex flex-col h-full items-center relative z-0 -mr-8">
+                <div className="flex flex-col h-full items-center relative z-0 -mr-8 xl:mr-0 shrink-0">
                      <div className="h-10 flex items-center justify-center w-full relative z-10">
                         <h3 className="font-bold text-gray-700 text-sm uppercase tracking-tight bg-gray-50/80 px-2 rounded backdrop-blur-sm">Semifinal</h3>
                      </div>
                      <div className="flex-1 flex flex-col justify-around py-2 w-36">
                          {rightSide.sf && (
-                             <div className="relative transition-transform hover:scale-105 hover:z-20">
+                             <div className="relative transition-transform hover:scale-105 hover:z-50">
                                 <KnockoutMatchCard match={rightSide.sf} onUpdate={(r) => handleUpdate(rightSide.sf.id, r)} />
                              </div>
                          )}
                      </div>
                 </div>
             </div>
+        </div>
       </div>
     </div>
   );
