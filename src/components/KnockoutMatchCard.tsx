@@ -49,8 +49,8 @@ export const KnockoutMatchCard: React.FC<KnockoutMatchCardProps> = ({ match, onU
                  match.result.homeGoals === match.result.awayGoals;
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-2 w-44 my-1">
-      <div className="text-[10px] text-gray-400 mb-1 font-mono">{match.id}</div>
+    <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-1.5 w-36 my-1">
+      <div className="text-[10px] text-gray-400 mb-0.5 font-mono">{match.id}</div>
       
       {/* Home Team */}
       <div className={clsx("flex items-center justify-between p-1 rounded", match.winner === match.homeTeam && "bg-green-50")}>

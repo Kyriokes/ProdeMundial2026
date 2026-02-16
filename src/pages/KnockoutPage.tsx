@@ -109,11 +109,11 @@ export const KnockoutPage: React.FC = () => {
   const champion = championCode ? countries[championCode] : null;
 
   const renderColumn = (matches: KnockoutMatch[], title: string) => (
-      <div className="flex flex-col h-full px-1 items-center">
-          <div className="h-10 flex items-center justify-center w-full">
-              <h3 className="font-bold text-gray-700 text-sm uppercase tracking-tight">{title}</h3>
+      <div className="flex flex-col h-full px-0.5 items-center flex-1">
+          <div className="h-8 flex items-center justify-center w-full bg-gray-100 rounded-t mb-1">
+              <h3 className="font-bold text-gray-700 text-[10px] uppercase tracking-tight">{title}</h3>
           </div>
-          <div className="flex-1 flex flex-col justify-around py-2">
+          <div className="flex-1 flex flex-col justify-around py-1 w-full items-center">
               {matches.map(m => (
                   <KnockoutMatchCard key={m.id} match={m} onUpdate={(r) => handleUpdate(m.id, r)} />
               ))}
@@ -122,24 +122,24 @@ export const KnockoutPage: React.FC = () => {
   );
 
   return (
-    <div className="h-screen bg-gray-50 overflow-x-auto overflow-y-hidden flex flex-col">
-      <div className="flex-none p-4">
-          <h1 className="text-2xl font-bold text-center text-gray-800">Fase Eliminatoria</h1>
+    <div className="h-screen bg-gray-50 overflow-hidden flex flex-col">
+      <div className="flex-none py-2 bg-white shadow-sm z-10">
+          <h1 className="text-xl font-bold text-center text-gray-800">Fase Eliminatoria</h1>
       </div>
       
-      <div className="flex-1 min-w-max px-4 pb-4 flex justify-center items-stretch">
+      <div className="flex-1 w-full px-2 pb-2 flex justify-center items-stretch overflow-hidden">
             {/* LEFT SIDE */}
-            <div className="flex">
+            <div className="flex flex-1 justify-end">
                 {renderColumn(leftSide.r32, '16avos')}
                 {renderColumn(leftSide.r16, '8avos')}
                 {renderColumn(leftSide.qf, 'Cuartos')}
                 
                 {/* Left Semi */}
-                <div className="flex flex-col h-full px-1 items-center">
-                     <div className="h-10 flex items-center justify-center w-full">
-                        <h3 className="font-bold text-gray-700 text-sm uppercase tracking-tight">Semifinal</h3>
+                <div className="flex flex-col h-full px-0.5 items-center flex-1">
+                     <div className="h-8 flex items-center justify-center w-full bg-gray-100 rounded-t mb-1">
+                        <h3 className="font-bold text-gray-700 text-[10px] uppercase tracking-tight">Semifinal</h3>
                      </div>
-                     <div className="flex-1 flex flex-col justify-around py-2">
+                     <div className="flex-1 flex flex-col justify-around py-1 w-full items-center">
                          {leftSide.sf && (
                              <KnockoutMatchCard match={leftSide.sf} onUpdate={(r) => handleUpdate(leftSide.sf.id, r)} />
                          )}
@@ -148,52 +148,52 @@ export const KnockoutPage: React.FC = () => {
             </div>
 
             {/* CENTER - FINAL & CHAMPION */}
-            <div className="flex flex-col h-full px-4 mx-2 border-l border-r border-gray-200 bg-white/50 rounded-xl min-w-[300px]">
-                <div className="h-10 flex items-center justify-center w-full">
-                    <h3 className="font-bold text-blue-900 text-lg uppercase tracking-wider">Gran Final</h3>
+            <div className="flex flex-col h-full px-2 mx-1 border-l border-r border-gray-200 bg-white/50 rounded-xl w-64 flex-none">
+                <div className="h-8 flex items-center justify-center w-full mb-1">
+                    <h3 className="font-bold text-blue-900 text-sm uppercase tracking-wider">Final</h3>
                 </div>
                 
                 <div className="flex-1 flex flex-col justify-center items-center">
                     {finalMatch && (
-                        <div className="transform scale-110 mb-8 shadow-xl rounded-lg">
+                        <div className="transform scale-110 mb-6 shadow-xl rounded-lg">
                              <KnockoutMatchCard match={finalMatch} onUpdate={(r) => handleUpdate(finalMatch.id, r)} />
                         </div>
                     )}
                     
                     {champion ? (
                         <div className="text-center animate-fade-in-up">
-                            <div className="text-4xl mb-2 drop-shadow-lg">🏆</div>
-                            <h2 className="text-lg font-bold text-gray-500 uppercase tracking-widest mb-1">Campeón</h2>
+                            <div className="text-3xl mb-2 drop-shadow-lg">🏆</div>
+                            <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-1">Campeón</h2>
                             <div className="flex flex-col items-center">
-                                 <div className="text-6xl mb-2 filter drop-shadow-md">
+                                 <div className="text-5xl mb-2 filter drop-shadow-md">
                                     <FlagIcon code={champion.flag} />
                                  </div>
-                                 <div className="text-2xl font-black text-gray-900 tracking-tight leading-none">
+                                 <div className="text-xl font-black text-gray-900 tracking-tight leading-none">
                                     {champion.name}
                                  </div>
                             </div>
                         </div>
                     ) : (
                         <div className="text-center opacity-30">
-                            <div className="text-4xl mb-2">🏆</div>
-                            <h2 className="text-lg font-bold">Por definir</h2>
+                            <div className="text-3xl mb-2">🏆</div>
+                            <h2 className="text-sm font-bold">Por definir</h2>
                         </div>
                     )}
                 </div>
             </div>
 
             {/* RIGHT SIDE */}
-            <div className="flex flex-row-reverse">
+            <div className="flex flex-row-reverse flex-1 justify-end">
                 {renderColumn(rightSide.r32, '16avos')}
                 {renderColumn(rightSide.r16, '8avos')}
                 {renderColumn(rightSide.qf, 'Cuartos')}
                 
                 {/* Right Semi */}
-                <div className="flex flex-col h-full px-1 items-center">
-                     <div className="h-10 flex items-center justify-center w-full">
-                        <h3 className="font-bold text-gray-700 text-sm uppercase tracking-tight">Semifinal</h3>
+                <div className="flex flex-col h-full px-0.5 items-center flex-1">
+                     <div className="h-8 flex items-center justify-center w-full bg-gray-100 rounded-t mb-1">
+                        <h3 className="font-bold text-gray-700 text-[10px] uppercase tracking-tight">Semifinal</h3>
                      </div>
-                     <div className="flex-1 flex flex-col justify-around py-2">
+                     <div className="flex-1 flex flex-col justify-around py-1 w-full items-center">
                          {rightSide.sf && (
                              <KnockoutMatchCard match={rightSide.sf} onUpdate={(r) => handleUpdate(rightSide.sf.id, r)} />
                          )}
