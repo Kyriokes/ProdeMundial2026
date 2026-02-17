@@ -27,7 +27,7 @@ export const QualifiersPage: React.FC = () => {
   };
 
   return (
-    <div className="h-full overflow-y-auto container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold text-center mb-2 text-gray-800 dark:text-gray-100">Fase de Clasificación</h1>
       <p className="text-center text-gray-600 dark:text-gray-400 mb-8">Selecciona los ganadores de los repechajes para completar los grupos.</p>
 
