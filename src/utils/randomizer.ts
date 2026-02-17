@@ -1,5 +1,9 @@
-import { MatchResult } from '../types';
+import { MatchResult, TournamentState, QualifiersState, GroupsState, KnockoutState, KnockoutMatch } from '../types';
 import { countries } from '../data/countries';
+import { initialGroups } from '../data/groups';
+import { uefaPaths, intercontinentalKeys } from '../data/qualifiers';
+import { generateGroupMatches, getQualifiedTeams } from './calculations';
+import { getKnockoutMatchups, generateBracket } from './knockoutLogic';
 
 export const generateMatchResult = (homeTeamCode: string, awayTeamCode: string, isKnockout: boolean = false): MatchResult & { winner?: string } => {
     const home = countries[homeTeamCode];
@@ -12,8 +16,10 @@ export const generateMatchResult = (homeTeamCode: string, awayTeamCode: string, 
     // Lower rank is better. Max rank ~210.
     // Let's invert rank to get "Strength"
     const maxRank = 215;
-    const strengthHome = Math.max(1, maxRank - home.fifaRanking);
-    const strengthAway = Math.max(1, maxRank - away.fifaRanking);
+    // Increase the weight of the ranking by applying a power function (e.g., ^5)
+    // This makes the difference between rank 1 and rank 50 much larger than linear.
+    const strengthHome = Math.pow(Math.max(1, maxRank - home.fifaRanking), 7);
+    const strengthAway = Math.pow(Math.max(1, maxRank - away.fifaRanking), 7);
     
     const totalStrength = strengthHome + strengthAway;
     let probHomeWin = strengthHome / totalStrength;
@@ -27,7 +33,14 @@ export const generateMatchResult = (homeTeamCode: string, awayTeamCode: string, 
     // Let's mix: 50% purely based on strength, 50% coin flip.
     // AdjustedProb = 0.5 * (StrengthProb) + 0.5 * 0.5
     // Actually, let's keep it simple: Use the calculated probability but clamp it so it's never 100% or 0%.
-    probHomeWin = 0.2 + (probHomeWin * 0.6); // Clamp between 20% and 80% approximately
+    // Update: User requested stronger weight on FIFA Ranking to avoid unrealistic champions.
+    // We will relax the clamping significantly.
+    // Old: probHomeWin = 0.2 + (probHomeWin * 0.6); // Clamp between 20% and 80% approximately
+    
+    // New logic: Allow probabilities up to 98%.
+    // With power ^3, a top team vs a mid team will have >90% chance naturally.
+    // We keep a tiny 2% uncertainty floor for absolute miracles.
+    probHomeWin = 0.0002 + (probHomeWin * 0.9668); // Clamp between 2% and 98%
 
     // Determine Winner of the "flow" of the match
     const rand = Math.random();
@@ -46,8 +59,8 @@ export const generateMatchResult = (homeTeamCode: string, awayTeamCode: string, 
     // P(Home) = 0.75 * probHomeWin
     // P(Away) = 0.75 * (1 - probHomeWin)
     
-    if (rand < drawProb && !isKnockout) {
-        winner = 'draw'; // Explicit draw in 90 mins
+    if (rand < drawProb) {
+        winner = 'draw'; // Explicit draw in 90 mins (leads to penalties in Knockout)
     } else {
         // If knockout, "draw" means penalties, but for goals generation we might still generate equal goals.
         // Let's decide if one team dominates.
@@ -204,5 +217,110 @@ export const generateMatchResult = (homeTeamCode: string, awayTeamCode: string, 
         isPenalty,
         penaltyWinner,
         winner: finalWinnerCode
+    };
+};
+
+export const randomizeTournament = (): TournamentState => {
+    // 1. Qualifiers
+    const newQualifiers: QualifiersState = {
+        uefaPaths: {},
+        intercontinentalKeys: {}
+    };
+
+    uefaPaths.forEach(path => {
+        const randomTeam = path.teams[Math.floor(Math.random() * path.teams.length)];
+        newQualifiers.uefaPaths[path.id] = randomTeam;
+    });
+
+    intercontinentalKeys.forEach(key => {
+        const randomTeam = key.teams[Math.floor(Math.random() * key.teams.length)];
+        newQualifiers.intercontinentalKeys[key.id] = randomTeam;
+    });
+
+    // 2. Groups
+    const newGroups: GroupsState = {
+        matches: {}
+    };
+
+    // Reconstruct groups with teams
+    const groupsWithTeams = initialGroups.map(group => {
+        const resolvedTeams = group.teams.map(teamCode => {
+            if (teamCode === 'pathA') return newQualifiers.uefaPaths.pathA;
+            if (teamCode === 'pathB') return newQualifiers.uefaPaths.pathB;
+            if (teamCode === 'pathC') return newQualifiers.uefaPaths.pathC;
+            if (teamCode === 'pathD') return newQualifiers.uefaPaths.pathD;
+            if (teamCode === 'keyA') return newQualifiers.intercontinentalKeys.keyA;
+            if (teamCode === 'keyB') return newQualifiers.intercontinentalKeys.keyB;
+            return teamCode;
+        });
+        
+        const matches = generateGroupMatches(group.id, resolvedTeams as string[]);
+        return { ...group, teams: resolvedTeams as string[], matches, members: {} };
+    });
+
+    // Generate matches
+    groupsWithTeams.forEach(group => {
+        group.matches.forEach(match => {
+            const result = generateMatchResult(match.homeTeam, match.awayTeam, false);
+            newGroups.matches[match.id] = result;
+        });
+    });
+
+    // 3. Knockout
+    const newKnockout: KnockoutState = {
+        matches: {}
+    };
+
+    // Calculate standings
+    const { groupWinners, groupRunnersUp, bestThirds } = getQualifiedTeams(groupsWithTeams, newGroups.matches);
+
+    // Get R32 matchups
+    const r32 = getKnockoutMatchups(groupWinners, groupRunnersUp, bestThirds);
+    
+    // Generate full bracket
+    const fullBracket = generateBracket(r32);
+
+    // Map for easy access
+    const matchMap = new Map<string, KnockoutMatch>();
+    fullBracket.forEach(m => matchMap.set(m.id, m));
+
+    // Simulate rounds
+    const rounds = ['roundOf32', 'roundOf16', 'quarterFinals', 'semiFinals', 'final'];
+    
+    rounds.forEach(round => {
+        const matchesInRound = fullBracket.filter(m => m.round === round);
+        
+        matchesInRound.forEach(match => {
+            // Check if we have teams (they might have been propagated)
+            if (match.homeTeam && match.awayTeam) {
+                const result = generateMatchResult(match.homeTeam, match.awayTeam, true);
+                
+                // Store result
+                newKnockout.matches[match.id] = result;
+
+                // Determine winner for propagation
+                let winner = result.winner;
+                if (!winner) {
+                     // Fallback if generateMatchResult somehow didn't return a winner (shouldn't happen for knockout)
+                     if ((result.homeGoals ?? 0) > (result.awayGoals ?? 0)) winner = match.homeTeam;
+                     else winner = match.awayTeam;
+                }
+
+                // Propagate
+                if (winner && match.nextMatchId) {
+                    const nextMatch = matchMap.get(match.nextMatchId);
+                    if (nextMatch) {
+                         if (match.nextMatchSlot === 'home') nextMatch.homeTeam = winner;
+                         if (match.nextMatchSlot === 'away') nextMatch.awayTeam = winner;
+                    }
+                }
+            }
+        });
+    });
+
+    return {
+        qualifiers: newQualifiers,
+        groups: newGroups,
+        knockout: newKnockout
     };
 };

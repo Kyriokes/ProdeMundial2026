@@ -1,14 +1,22 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
 import { QualifiersPage } from './pages/QualifiersPage';
 import { GroupsPage } from './pages/GroupsPage';
 import { KnockoutPage } from './pages/KnockoutPage';
 import { RouteSync } from './components/RouteSync';
-import { Share2, Moon, Sun } from 'lucide-react';
+import { Share2, Moon, Sun, Dices, Eraser } from 'lucide-react';
+import { Toaster, toast } from 'sonner';
+import { BallIcon } from './components/BallIcon';
+import { KofiButton } from './components/KofiButton';
+import { useTournamentStore } from './store/useTournamentStore';
+import { randomizeTournament } from './utils/randomizer';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const currentStage = pathname.split('/')[1];
+  const { setFullState } = useTournamentStore();
+
   const [isDark, setIsDark] = React.useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('theme') === 'dark' || 
@@ -31,7 +39,90 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
-    alert('Enlace copiado al portapapeles!');
+    toast.success('Enlace copiado al portapapeles!');
+  };
+
+  const handleRandomize = () => {
+    toast.custom((t) => (
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 max-w-sm w-full">
+        <div className="flex items-start gap-4">
+          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-full text-blue-600 dark:text-blue-400 shrink-0">
+            <Dices size={20} />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">
+              ¿Randomizar torneo?
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 leading-relaxed">
+              Se generarán resultados aleatorios y se perderán los cambios actuales.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => toast.dismiss(t)}
+                className="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  toast.dismiss(t);
+                  const newState = randomizeTournament();
+                  setFullState(newState);
+                  navigate('/knockout');
+                  toast.success('¡Torneo randomizado con éxito!');
+                }}
+                className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors shadow-sm"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    ), {
+      duration: 5000,
+    });
+  };
+
+  const handleReset = () => {
+    toast.custom((t) => (
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 max-w-sm w-full">
+        <div className="flex items-start gap-4">
+          <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-full text-red-600 dark:text-red-400 shrink-0">
+            <Eraser size={20} />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">
+              ¿Borrar todo?
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 leading-relaxed">
+              Se eliminarán todos los resultados ingresados y se reiniciará el torneo.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => toast.dismiss(t)}
+                className="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  toast.dismiss(t);
+                  // Reload the page to clear the state and start fresh
+                  window.location.href = '/';
+                  toast.success('¡Torneo reiniciado!');
+                }}
+                className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors shadow-sm"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    ), {
+      duration: 5000,
+    });
   };
 
   return (
@@ -39,11 +130,11 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50 transition-colors duration-300 flex-none">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <span className="text-2xl">⚽</span>
+            <BallIcon size={28} className="text-blue-900 dark:text-blue-400" />
             <span className="font-bold text-xl tracking-tight text-blue-900 dark:text-blue-400">Prode Mundial 2026</span>
           </div>
           
-          <div className="hidden md:flex space-x-1">
+          <div className="hidden md:flex space-x-1 items-center">
             <Link 
               to="/qualifiers" 
               className={`px-4 py-2 rounded-md transition-colors ${currentStage === 'qualifiers' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}`}
@@ -64,6 +155,20 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             >
               3. Eliminatorias
             </Link>
+            <button
+                onClick={handleRandomize}
+                className="ml-2 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
+                title="Randomizar Todo"
+            >
+                <Dices size={20} />
+            </button>
+            <button
+                onClick={handleReset}
+                className="ml-1 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
+                title="Borrar Todo"
+            >
+                <Eraser size={20} />
+            </button>
           </div>
 
           <div className="flex items-center space-x-3">
@@ -89,10 +194,14 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         {children}
       </main>
 
-      <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-8 transition-colors duration-300 flex-none z-10 relative">
-        <div className="container mx-auto px-4 text-center text-gray-500 dark:text-gray-400 text-sm">
-          <p>Prode Mundial 2026 - Simulador No Oficial</p>
-          <p className="mt-2">Desarrollado con React, TypeScript y Zustand.</p>
+      <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-4 transition-colors duration-300 flex-none z-10 relative">
+        <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4 text-gray-500 dark:text-gray-400 text-sm">
+          <div className="text-center md:text-left">
+            <span className="font-medium">Prode Mundial 2026</span> - Simulador No Oficial
+            <span className="hidden md:inline mx-2">•</span>
+            <span className="block md:inline">Este sitio no está afiliado a la FIFA. Es una herramienta de fans para fans.</span>
+          </div>
+          <KofiButton color="#72a4f2" text="Support me on Ko-fi" kofiId="R5R21UFJBX" />
         </div>
       </footer>
     </div>
@@ -103,6 +212,7 @@ function App() {
   return (
     <BrowserRouter>
       <RouteSync />
+      <Toaster richColors position="top-center" />
       <Layout>
         <Routes>
           <Route path="/" element={<Navigate to="/qualifiers" replace />} />
