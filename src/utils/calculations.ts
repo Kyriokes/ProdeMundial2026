@@ -118,7 +118,13 @@ function resolveTies(members: GroupMember[], groupMatches: Match[], allMatches: 
   return members.sort((a, b) => {
     if (a.points !== b.points) return b.points - a.points;
 
-    // 2. Head-to-head points
+    // 2. Goal difference
+    if (a.goalDifference !== b.goalDifference) return b.goalDifference - a.goalDifference;
+
+    // 3. Goals for
+    if (a.goalsFor !== b.goalsFor) return b.goalsFor - a.goalsFor;
+
+    // 4. Head-to-head points
     // Simplified version without mini-league
     const match = groupMatches.find(m => 
       (m.homeTeam === a.countryCode && m.awayTeam === b.countryCode) || 
@@ -149,9 +155,6 @@ function resolveTies(members: GroupMember[], groupMatches: Match[], allMatches: 
              if (goalsA !== goalsB) return goalsB - goalsA;
         }
     }
-
-    if (a.goalDifference !== b.goalDifference) return b.goalDifference - a.goalDifference;
-    if (a.goalsFor !== b.goalsFor) return b.goalsFor - a.goalsFor;
 
     const countryA = countries[a.countryCode];
     const countryB = countries[b.countryCode];
