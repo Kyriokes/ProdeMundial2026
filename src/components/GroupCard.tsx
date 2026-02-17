@@ -25,7 +25,7 @@ export const GroupCard: React.FC<GroupCardProps> = ({ id, name, teams }) => {
   }, [groupData, groups.matches]);
 
   const handleMatchUpdate = (matchId: string, updates: Partial<MatchResult>) => {
-    const currentResult = groups.matches[matchId] || {};
+    const currentResult = groups.matches[matchId] || { homeGoals: undefined, awayGoals: undefined };
     setGroupMatch(matchId, {
       ...currentResult,
       ...updates

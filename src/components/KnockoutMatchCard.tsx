@@ -27,8 +27,9 @@ export const KnockoutMatchCard: React.FC<KnockoutMatchCardProps> = ({ match, onU
 
   const handleScoreChange = (side: 'home' | 'away', value: string) => {
     const num = value === '' ? undefined : parseInt(value);
+    const currentResult = match.result || { homeGoals: undefined, awayGoals: undefined };
     const newResult = {
-      ...match.result,
+      ...currentResult,
       [side === 'home' ? 'homeGoals' : 'awayGoals']: num
     };
 
