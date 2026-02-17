@@ -10,34 +10,22 @@ export const RouteSync: React.FC = () => {
   const isFirstRun = useRef(true);
   const lastPathname = useRef(pathname);
 
-  // 1. Sync URL -> State (On Mount and on PopState/Navigation)
+  // 1. Initial Load: Parse URL -> Set State
   useEffect(() => {
-    // Check if pathname actually changed significantly (codes changed)
-    const { codes } = RouteStateManager.parseUrl(pathname);
-    
-    // If we have codes, we try to sync state
-    if (codes.length > 0) {
-      // To avoid loops, we could check if the current state serializes to the same codes
-      // But serialization is what we do in the other effect.
-      
-      // Let's just trust that if the URL changes, we should update the state.
-      // But we need to make sure we don't overwrite user changes if the URL update was triggered by the user changes.
-      
-      // The other effect updates the URL. If that happens, this effect runs.
-      // If the URL matches what we just set, we shouldn't need to do anything, 
-      // but setFullState with same data might trigger re-renders.
-      
-      const stateFromUrl = RouteStateManager.getStateFromUrl(pathname);
-      setFullState(stateFromUrl);
-    }
-  }, [pathname, setFullState]);
+      // Only run on mount to hydrate state from URL
+      const { codes } = RouteStateManager.parseUrl(window.location.pathname);
+      if (codes.length > 0) {
+          const state = RouteStateManager.getStateFromUrl(window.location.pathname);
+          setFullState(state);
+      }
+      // Mark as not first run immediately after mount check
+      isFirstRun.current = false;
+  }, [setFullState]); // Only on mount
 
   // 2. Sync State -> URL
   useEffect(() => {
-    if (isFirstRun.current) {
-      isFirstRun.current = false;
-      return;
-    }
+    // Skip the very first run to avoid overwriting URL with empty state before hydration
+    if (isFirstRun.current) return;
 
     const qualifierCode = Object.keys(qualifiers.uefaPaths).length > 0 || Object.keys(qualifiers.intercontinentalKeys).length > 0
       ? StateSerializer.serializeQualifiers(qualifiers) 
@@ -50,9 +38,10 @@ export const RouteSync: React.FC = () => {
     const knockoutCode = Object.keys(knockout.matches).length > 0 
       ? StateSerializer.serializeKnockout(knockout) 
       : '';
-    
+      
     // Determine base path based on current stage or what's completed
-    const currentStage = pathname.split('/')[1] || 'qualifiers';
+    const currentPath = window.location.pathname;
+    const currentStage = currentPath.split('/')[1] || 'qualifiers';
     
     // Construct the full code path using & separator
     let codePath = '';
@@ -68,27 +57,20 @@ export const RouteSync: React.FC = () => {
     
     // If we have no codes, we are at root/qualifiers empty
     if (!codePath) {
-      if (pathname !== '/qualifiers' && pathname !== '/') {
-         navigate('/qualifiers', { replace: true });
+      if (currentPath !== '/qualifiers' && currentPath !== '/') {
+         // Don't redirect if just empty, unless we want to enforce structure
       }
       return;
     }
 
-    // We need to keep the user on the same "page" (stage) but update the codes.
-    
-    // Parse current URL to compare codes
-    // We don't really need to compare codes here, we just build the target URL and navigate if different.
-    
     const newCodes = codePath.substring(1).split('&'); // remove leading /
-    
-    // Reconstruct URL with current stage but new codes
     const targetUrl = `/${currentStage}/${newCodes.join('&')}`;
     
-    if (pathname !== targetUrl) {
+    if (currentPath !== targetUrl) {
        navigate(targetUrl, { replace: true });
     }
     
-  }, [qualifiers, groups, knockout, navigate, pathname]);
+  }, [qualifiers, groups, knockout, navigate]);
 
   return null;
 };

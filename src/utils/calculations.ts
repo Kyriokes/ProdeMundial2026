@@ -45,7 +45,8 @@ export function calculateGroupStandings(group: Group, allMatches: Record<string,
       goalDifference: 0,
       wins: 0,
       draws: 0,
-      losses: 0
+      losses: 0,
+      fairPlayPoints: 0
     };
   });
 
@@ -60,6 +61,17 @@ export function calculateGroupStandings(group: Group, allMatches: Record<string,
         home.goalsFor += result.homeGoals;
         home.goalsAgainst += result.awayGoals;
         home.goalDifference = home.goalsFor - home.goalsAgainst;
+
+        // Fair Play Calculation
+        // Yellow: -1, Double Yellow: -3, Direct Red: -4
+        // Yellow + Direct Red: -5 (Handled by inputs if user enters both)
+        home.fairPlayPoints += (result.homeYellow || 0) * -1;
+        home.fairPlayPoints += (result.homeDoubleYellow || 0) * -3;
+        home.fairPlayPoints += (result.homeDirectRed || 0) * -4;
+
+        away.fairPlayPoints += (result.awayYellow || 0) * -1;
+        away.fairPlayPoints += (result.awayDoubleYellow || 0) * -3;
+        away.fairPlayPoints += (result.awayDirectRed || 0) * -4;
 
         away.goalsFor += result.awayGoals;
         away.goalsAgainst += result.homeGoals;
@@ -143,7 +155,11 @@ function resolveTies(members: GroupMember[], groupMatches: Match[], allMatches: 
 
     const countryA = countries[a.countryCode];
     const countryB = countries[b.countryCode];
-    if (countryA.fairPlay !== countryB.fairPlay) return countryB.fairPlay - countryA.fairPlay;
+    
+    // Safety check for missing country data
+    if (!countryA || !countryB) return 0;
+
+    if (a.fairPlayPoints !== b.fairPlayPoints) return b.fairPlayPoints - a.fairPlayPoints;
     return countryA.fifaRanking - countryB.fifaRanking;
   });
 }
@@ -155,7 +171,11 @@ export function compareThirdPlace(a: GroupMember, b: GroupMember): number {
     
     const countryA = countries[a.countryCode];
     const countryB = countries[b.countryCode];
-    if (countryA.fairPlay !== countryB.fairPlay) return countryB.fairPlay - countryA.fairPlay;
+
+    // Safety check for missing country data
+    if (!countryA || !countryB) return 0;
+
+    if (a.fairPlayPoints !== b.fairPlayPoints) return b.fairPlayPoints - a.fairPlayPoints;
     return countryA.fifaRanking - countryB.fifaRanking;
 }
 

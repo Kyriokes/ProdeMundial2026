@@ -53,7 +53,19 @@ export const KnockoutPage: React.FC = () => {
         const storedResult = knockout.matches[match.id];
         if (storedResult) {
             match.result = storedResult;
-            match.winner = storedResult.winner;
+            
+            // Derive winner if not explicitly stored (hydration case)
+            if (!storedResult.winner) {
+                 if (storedResult.homeGoals > storedResult.awayGoals) {
+                     match.winner = match.homeTeam;
+                 } else if (storedResult.awayGoals > storedResult.homeGoals) {
+                     match.winner = match.awayTeam;
+                 } else if (storedResult.isPenalty && storedResult.penaltyWinner) {
+                     match.winner = storedResult.penaltyWinner === 'home' ? match.homeTeam : match.awayTeam;
+                 }
+            } else {
+                match.winner = storedResult.winner;
+            }
             
             // Propagate to next match
             if (match.winner && match.nextMatchId) {
@@ -108,104 +120,99 @@ export const KnockoutPage: React.FC = () => {
   const championCode = finalMatch?.winner;
   const champion = championCode ? countries[championCode] : null;
 
-  const renderColumn = (matches: KnockoutMatch[], title: string, isRightSide: boolean = false) => (
-      <div className={`flex flex-col h-full items-center relative z-0 ${isRightSide ? '-mr-8 xl:mr-0' : '-ml-8 xl:ml-0'} transition-all duration-300 first:ml-0 first:mr-0 shrink-0`}>
-          <div className="h-10 flex items-center justify-center w-full relative z-10">
-              <h3 className="font-bold text-gray-700 text-sm uppercase tracking-tight bg-gray-50/80 px-2 rounded backdrop-blur-sm whitespace-nowrap">{title}</h3>
+  const renderColumn = (matches: KnockoutMatch[], title: string) => {
+    const heightPercent = matches.length > 0 ? 100 / matches.length : 0;
+
+    return (
+      <div className="flex flex-col h-full items-center relative transition-all duration-300 shrink-0 z-0">
+          <div className="h-8 flex items-center justify-center w-full relative z-10">
+              <h3 className="font-bold text-gray-700 dark:text-gray-300 text-xs uppercase tracking-tight bg-gray-50/90 dark:bg-gray-800/90 px-2 py-0.5 rounded backdrop-blur-sm whitespace-nowrap border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">{title}</h3>
           </div>
-          <div className="flex-1 flex flex-col justify-around py-2 w-36">
-              {matches.map(m => (
-                  <div key={m.id} className="relative transition-transform hover:scale-105 hover:z-50">
-                    <KnockoutMatchCard match={m} onUpdate={(r) => handleUpdate(m.id, r)} />
+          
+          <div className="flex-1 w-36 py-1 flex flex-col">
+              {matches.map((m) => (
+                  <div 
+                    key={m.id} 
+                    className="flex flex-col justify-center items-center w-full relative"
+                    style={{ height: `${heightPercent}%` }}
+                  >
+                      {/* Connector Lines Logic could go here, but for now just the card */}
+                      <div className="relative transition-transform duration-200 hover:scale-105 z-20">
+                          <KnockoutMatchCard match={m} onUpdate={(r) => handleUpdate(m.id, r)} />
+                      </div>
                   </div>
               ))}
           </div>
       </div>
-  );
+    );
+  };
 
   return (
-    <div className="h-screen bg-gray-50 overflow-hidden flex flex-col">
-      <div className="flex-none p-4 bg-white shadow-sm z-20">
-          <h1 className="text-2xl font-bold text-center text-gray-800">Fase Eliminatoria</h1>
+    <div className="h-full bg-gray-50 dark:bg-gray-900 flex flex-col transition-colors duration-300 ">
+      <div className="flex-none py-3 px-4 bg-white dark:bg-gray-800 shadow-sm z-30 relative transition-colors">
+          <h1 className="text-2xl font-bold text-center text-gray-800 dark:text-gray-100">Fase Eliminatoria</h1>
       </div>
       
-      <div className="flex-1 w-full px-4 pb-4 overflow-x-auto overflow-y-hidden">
-        <div className="h-full min-w-fit flex justify-center items-stretch mx-auto">
-            {/* LEFT SIDE */}
-            <div className="flex -space-x-12 xl:space-x-2 pl-8 transition-all duration-300">
+      <div className="flex-1 w-full overflow-auto bg-slate-50 dark:bg-gray-900 transition-colors relative">
+        <div className="h-full w-max min-w-full flex justify-center items-stretch mx-auto p-4">
+            {/* LEFT SIDE (16 -> 8 -> 4 -> Semi) */}
+            <div className="flex space-x-4 xl:space-x-8 transition-all duration-300 items-stretch flex-1 justify-end">
                 {renderColumn(leftSide.r32, '16avos')}
                 {renderColumn(leftSide.r16, '8avos')}
                 {renderColumn(leftSide.qf, 'Cuartos')}
                 
                 {/* Left Semi */}
-                <div className="flex flex-col h-full items-center relative z-0 -ml-8 xl:ml-0 shrink-0">
-                     <div className="h-10 flex items-center justify-center w-full relative z-10">
-                        <h3 className="font-bold text-gray-700 text-sm uppercase tracking-tight bg-gray-50/80 px-2 rounded backdrop-blur-sm">Semifinal</h3>
-                     </div>
-                     <div className="flex-1 flex flex-col justify-around py-2 w-36">
-                         {leftSide.sf && (
-                             <div className="relative transition-transform hover:scale-105 hover:z-50">
-                                <KnockoutMatchCard match={leftSide.sf} onUpdate={(r) => handleUpdate(leftSide.sf.id, r)} />
-                             </div>
-                         )}
-                     </div>
-                </div>
+                {renderColumn(leftSide.sf ? [leftSide.sf] : [], 'Semifinal')}
             </div>
 
             {/* CENTER - FINAL & CHAMPION */}
-            <div className="flex flex-col h-full px-4 mx-2 border-l border-r border-gray-200 bg-white/50 rounded-xl min-w-[300px] z-10 relative shrink-0">
-                <div className="h-10 flex items-center justify-center w-full">
-                    <h3 className="font-bold text-blue-900 text-lg uppercase tracking-wider">Gran Final</h3>
+            <div className={`flex flex-col h-full px-8 mx-4 lg:mx-8 border-x border-gray-200 dark:border-gray-700 bg-white/40 dark:bg-gray-800/40 rounded-3xl min-w-[320px] z-10 relative shrink-0 shadow-sm backdrop-blur-sm justify-center transition-all duration-300 overflow-hidden`}>
+                {/* Background Flag with Blur */}
+                {champion && (
+                    <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-20 dark:opacity-10 blur-0">
+                             <span className={`fi fi-${champion.flag} text-[20rem]`} style={{ fontSize: '20rem' }} />
+                        </div>
+                    </div>
+                )}
+
+                <div className="flex-none h-16 flex items-end justify-center w-full mb-4 relative z-10">
+                    <h3 className="font-black text-blue-900 dark:text-blue-400 text-xl uppercase tracking-widest border-b-2 border-blue-900/20 dark:border-blue-400/20 pb-1 transition-colors">Gran Final</h3>
                 </div>
                 
-                <div className="flex-1 flex flex-col justify-center items-center">
+                <div className="flex-1 flex flex-col justify-center items-center pb-20 relative z-10">
                     {finalMatch && (
-                        <div className="transform scale-110 mb-8 shadow-xl rounded-lg bg-white relative z-20">
+                        <div className="transform scale-125 mb-12 shadow-2xl rounded-lg bg-white dark:bg-gray-800 relative z-20 ring-4 ring-gray-100 dark:ring-gray-700 transition-colors">
                              <KnockoutMatchCard match={finalMatch} onUpdate={(r) => handleUpdate(finalMatch.id, r)} />
                         </div>
                     )}
                     
                     {champion ? (
-                        <div className="text-center animate-fade-in-up">
-                            <div className="text-4xl mb-2 drop-shadow-lg">🏆</div>
-                            <h2 className="text-lg font-bold text-gray-500 uppercase tracking-widest mb-1">Campeón</h2>
-                            <div className="flex flex-col items-center">
-                                 <div className="text-6xl mb-2 filter drop-shadow-md">
-                                    <FlagIcon code={champion.flag} />
-                                 </div>
-                                 <div className="text-2xl font-black text-gray-900 tracking-tight leading-none whitespace-nowrap">
+                        <div className="text-center animate-fade-in-up transform transition-all duration-500 hover:scale-110 cursor-default">
+                            <div className="text-5xl mb-4 drop-shadow-xl animate-bounce">🏆</div>
+                            <h2 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-2">Campeón del Mundo</h2>
+                            <div className="flex flex-col items-center bg-white/80 dark:bg-gray-800/80 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 transition-colors backdrop-blur-sm">
+                                 <div className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter leading-none whitespace-nowrap bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400">
                                     {champion.name}
                                  </div>
                             </div>
                         </div>
                     ) : (
-                        <div className="text-center opacity-30">
-                            <div className="text-4xl mb-2">🏆</div>
-                            <h2 className="text-lg font-bold">Por definir</h2>
+                        <div className="text-center opacity-40 grayscale dark:opacity-30">
+                            <div className="text-5xl mb-4">🏆</div>
+                            <h2 className="text-xl font-bold dark:text-gray-300 tracking-widest">POR DEFINIR</h2>
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* RIGHT SIDE */}
-            <div className="flex flex-row-reverse -space-x-12 xl:space-x-2 space-x-reverse pr-8 transition-all duration-300">
-                {renderColumn(rightSide.r32, '16avos', true)}
-                {renderColumn(rightSide.r16, '8avos', true)}
-                {renderColumn(rightSide.qf, 'Cuartos', true)}
-                
+            {/* RIGHT SIDE (Semi <- 4 <- 8 <- 16) */}
+            <div className="flex space-x-4 xl:space-x-8 transition-all duration-300 items-stretch flex-1 justify-start">
                 {/* Right Semi */}
-                <div className="flex flex-col h-full items-center relative z-0 -mr-8 xl:mr-0 shrink-0">
-                     <div className="h-10 flex items-center justify-center w-full relative z-10">
-                        <h3 className="font-bold text-gray-700 text-sm uppercase tracking-tight bg-gray-50/80 px-2 rounded backdrop-blur-sm">Semifinal</h3>
-                     </div>
-                     <div className="flex-1 flex flex-col justify-around py-2 w-36">
-                         {rightSide.sf && (
-                             <div className="relative transition-transform hover:scale-105 hover:z-50">
-                                <KnockoutMatchCard match={rightSide.sf} onUpdate={(r) => handleUpdate(rightSide.sf.id, r)} />
-                             </div>
-                         )}
-                     </div>
-                </div>
+                {renderColumn(rightSide.sf ? [rightSide.sf] : [], 'Semifinal')}
+                {renderColumn(rightSide.qf, 'Cuartos')}
+                {renderColumn(rightSide.r16, '8avos')}
+                {renderColumn(rightSide.r32, '16avos')}
             </div>
         </div>
       </div>

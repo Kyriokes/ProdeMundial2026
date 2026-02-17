@@ -17,6 +17,7 @@ export interface GroupMember {
   wins: number;
   draws: number;
   losses: number;
+  fairPlayPoints: number;
 }
 
 export interface MatchResult {
@@ -24,6 +25,12 @@ export interface MatchResult {
   awayGoals: number | undefined;
   isPenalty?: boolean;
   penaltyWinner?: string; // 'home' | 'away'
+  homeYellow?: number;
+  homeDoubleYellow?: number;
+  homeDirectRed?: number;
+  awayYellow?: number;
+  awayDoubleYellow?: number;
+  awayDirectRed?: number;
 }
 
 export interface Match {
