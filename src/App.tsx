@@ -3,8 +3,9 @@ import { BrowserRouter, Routes, Route, Navigate, Link, useLocation, useNavigate 
 import { QualifiersPage } from './pages/QualifiersPage';
 import { GroupsPage } from './pages/GroupsPage';
 import { KnockoutPage } from './pages/KnockoutPage';
+import { StatsPage } from './pages/StatsPage';
 import { RouteSync } from './components/RouteSync';
-import { Share2, Moon, Sun, Dices, Eraser } from 'lucide-react';
+import { Share2, Moon, Sun, Dices, Eraser, BarChart2, Trophy } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 import { BallIcon } from './components/BallIcon';
 import { KofiButton } from './components/KofiButton';
@@ -155,6 +156,16 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             >
               3. Eliminatorias
             </Link>
+            <span className="self-center text-gray-300 dark:text-gray-600">/</span>
+            <Link 
+              to="/stats" 
+              className={`px-4 py-2 rounded-md transition-colors ${currentStage === 'stats' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}`}
+            >
+              <span className="flex items-center gap-1.5">
+                <Trophy size={16} />
+                Tabla
+              </span>
+            </Link>
             <button
                 onClick={handleRandomize}
                 className="ml-2 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
@@ -219,6 +230,7 @@ function App() {
           <Route path="/qualifiers/*" element={<QualifiersPage />} />
           <Route path="/groups/*" element={<GroupsPage />} />
           <Route path="/knockout/*" element={<KnockoutPage />} />
+          <Route path="/stats" element={<StatsPage />} />
         </Routes>
       </Layout>
     </BrowserRouter>
