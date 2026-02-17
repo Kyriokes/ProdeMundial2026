@@ -8,7 +8,7 @@ interface KofiButtonProps {
 
 export const KofiButton: React.FC<KofiButtonProps> = ({
   color = '#72a4f2',
-  text = 'Support me on Ko-fi',
+  text = 'Invitame un Ko-fi',
   kofiId = 'R5R21UFJBX'
 }) => {
   return (

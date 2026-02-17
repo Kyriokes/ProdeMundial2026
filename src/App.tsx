@@ -5,18 +5,30 @@ import { GroupsPage } from './pages/GroupsPage';
 import { KnockoutPage } from './pages/KnockoutPage';
 import { StatsPage } from './pages/StatsPage';
 import { RouteSync } from './components/RouteSync';
-import { Share2, Moon, Sun, Dices, Eraser, BarChart2, Trophy } from 'lucide-react';
+import { Share2, Moon, Sun, Dices, Eraser, BarChart2, Trophy, Menu, X, CircleHelp } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 import { BallIcon } from './components/BallIcon';
 import { KofiButton } from './components/KofiButton';
 import { useTournamentStore } from './store/useTournamentStore';
 import { randomizeTournament } from './utils/randomizer';
+import { InstructionsModal } from './components/InstructionsModal';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const currentStage = pathname.split('/')[1];
   const { setFullState } = useTournamentStore();
+  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+
+  const [showInstructions, setShowInstructions] = React.useState(false);
+
+  React.useEffect(() => {
+    const hasSeen = localStorage.getItem('hasSeenInstructions');
+    if (!hasSeen) {
+      setShowInstructions(true);
+      localStorage.setItem('hasSeenInstructions', 'true');
+    }
+  }, []);
 
   const [isDark, setIsDark] = React.useState(() => {
     if (typeof window !== 'undefined') {
@@ -134,6 +146,14 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <BallIcon size={28} className="text-blue-900 dark:text-blue-400" />
             <span className="font-bold text-xl tracking-tight text-blue-900 dark:text-blue-400">Prode Mundial 2026</span>
           </div>
+
+          <button 
+            className="md:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-label="Toggle menu"
+          >
+            {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
           
           <div className="hidden md:flex space-x-1 items-center">
             <Link 
@@ -184,6 +204,13 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
           <div className="flex items-center space-x-3">
             <button
+              onClick={() => setShowInstructions(true)}
+              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
+              title="Instrucciones"
+            >
+              <CircleHelp size={20} />
+            </button>
+            <button
               onClick={toggleTheme}
               className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
               aria-label="Toggle Dark Mode"
@@ -199,6 +226,62 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </button>
           </div>
         </div>
+
+        {/* Mobile Menu */}
+        {isMenuOpen && (
+          <div className="md:hidden absolute top-16 left-0 w-full bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-lg z-40">
+             <div className="flex flex-col p-4 space-y-2">
+                <Link 
+                  to="/qualifiers" 
+                  className={`px-4 py-3 rounded-md transition-colors ${currentStage === 'qualifiers' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  1. Clasificación
+                </Link>
+                <Link 
+                  to="/groups" 
+                  className={`px-4 py-3 rounded-md transition-colors ${currentStage === 'groups' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  2. Grupos
+                </Link>
+                <Link 
+                  to="/knockout" 
+                  className={`px-4 py-3 rounded-md transition-colors ${currentStage === 'knockout' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  3. Eliminatorias
+                </Link>
+                <Link 
+                  to="/stats" 
+                  className={`px-4 py-3 rounded-md transition-colors ${currentStage === 'stats' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Trophy size={16} />
+                    Tabla
+                  </span>
+                </Link>
+
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-2 flex gap-2">
+                    <button
+                        onClick={() => { handleRandomize(); setIsMenuOpen(false); }}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-medium"
+                    >
+                        <Dices size={18} />
+                        <span>Randomizar</span>
+                    </button>
+                    <button
+                        onClick={() => { handleReset(); setIsMenuOpen(false); }}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-medium"
+                    >
+                        <Eraser size={18} />
+                        <span>Borrar</span>
+                    </button>
+                </div>
+             </div>
+          </div>
+        )}
       </nav>
 
       <main className="flex-1 relative z-0 flex flex-col overflow-y-auto">
@@ -212,9 +295,11 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <span className="hidden md:inline mx-2">•</span>
             <span className="block md:inline">Este sitio no está afiliado a la FIFA. Es una herramienta de fans para fans.</span>
           </div>
-          <KofiButton color="#72a4f2" text="Support me on Ko-fi" kofiId="R5R21UFJBX" />
+          <KofiButton color="#72a4f2" text="Invitame un Cafecito" kofiId="R5R21UFJBX" />
         </div>
       </footer>
+
+      <InstructionsModal isOpen={showInstructions} onClose={() => setShowInstructions(false)} />
     </div>
   );
 };

@@ -6,6 +6,7 @@ import { MatchResult, KnockoutMatch } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { FlagIcon } from '../components/FlagIcon';
 import { useBracketData } from '../hooks/useBracketData';
+import { MobileKnockoutView } from '../components/MobileKnockoutView';
 
 export const KnockoutPage: React.FC = () => {
   const { setKnockoutMatch } = useTournamentStore();
@@ -83,7 +84,11 @@ export const KnockoutPage: React.FC = () => {
           <h1 className="text-2xl font-bold text-center text-gray-800 dark:text-gray-100">Fase Eliminatoria</h1>
       </div>
       
-      <div className="flex-1 w-full overflow-auto bg-slate-50 dark:bg-gray-900 transition-colors relative">
+      <div className="lg:hidden flex-1 overflow-hidden">
+        <MobileKnockoutView rounds={rounds} onUpdate={handleUpdate} champion={champion} />
+      </div>
+
+      <div className="hidden lg:flex flex-1 w-full overflow-auto bg-slate-50 dark:bg-gray-900 transition-colors relative">
         <div className="h-full w-max min-w-full flex justify-center items-stretch mx-auto p-4">
             {/* LEFT SIDE (16 -> 8 -> 4 -> Semi) */}
             <div className="flex space-x-4 xl:space-x-8 transition-all duration-300 items-stretch flex-1 justify-end">
