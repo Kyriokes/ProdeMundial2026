@@ -321,7 +321,7 @@ function App() {
   return (
     <BrowserRouter>
       <RouteSync />
-      <Toaster richColors position="top-center" />
+      <Toaster richColors position="top-center" visibleToasts={1} />
       <Layout>
         <Routes>
           <Route path="/" element={<Navigate to="/qualifiers" replace />} />

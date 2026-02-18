@@ -13,42 +13,50 @@ export const generateMatchResult = (homeTeamCode: string, awayTeamCode: string, 
     if (!home || !away) return { homeGoals: 0, awayGoals: 0 };
 
     // 1. Determine Winner Probabilities based on FIFA Ranking
-    // Lower rank is better. Max rank ~210.
-    // Let's invert rank to get "Strength"
-    const maxRank = 215;
-    // Increase the weight of the ranking by applying a power function (e.g., ^5)
-    // This makes the difference between rank 1 and rank 50 much larger than linear.
-    const strengthHome = Math.pow(Math.max(1, maxRank - home.fifaRanking), 7);
-    const strengthAway = Math.pow(Math.max(1, maxRank - away.fifaRanking), 7);
+    // We use a Logistic Function (Sigmoid) based on Rank Difference.
+    // This avoids "Infinity" issues with high exponents and provides controlled probabilities.
     
-    const totalStrength = strengthHome + strengthAway;
-    let probHomeWin = strengthHome / totalStrength;
-    
-    // Apply "Surprise Factor" / Flatten probabilities slightly so underdogs have a chance
-    // This reduces the gap. If prob is 0.8, it becomes 0.8 * 0.8 + 0.1 = 0.74?
-    // Let's just cap the max influence to 50% as requested, but "prevalence" means weight.
-    // The user said: "ranking fifa tambien tendra un hasta 50% de prevalencia en inclinar la balanza"
-    // This implies base 50/50, adjusted by up to 25%? Or 50% weight vs 50% random?
-    
-    // Let's mix: 50% purely based on strength, 50% coin flip.
-    // AdjustedProb = 0.5 * (StrengthProb) + 0.5 * 0.5
-    // Actually, let's keep it simple: Use the calculated probability but clamp it so it's never 100% or 0%.
-    // Update: User requested stronger weight on FIFA Ranking to avoid unrealistic champions.
-    // We will relax the clamping significantly.
-    // Old: probHomeWin = 0.2 + (probHomeWin * 0.6); // Clamp between 20% and 80% approximately
-    
-    // New logic: Allow probabilities up to 98%.
-    // With power ^3, a top team vs a mid team will have >90% chance naturally.
-    // We keep a tiny 2% uncertainty floor for absolute miracles.
-    probHomeWin = 0.0002 + (probHomeWin * 0.9668); // Clamp between 2% and 98%
+    // Calculate Rank Difference:
+    // If Home is Rank 1 and Away is Rank 20 -> Diff = 20 - 1 = 19 (Positive means Home is better)
+    const rankDiff = away.fifaRanking - home.fifaRanking;
+
+    // Scale Factor: Controls how "decisive" the ranking difference is.
+    // Lower factor = More aggressive (Better team wins more often).
+    // ELO systems use ~400. We want extreme dominance, so we use 25.
+    // Example: Diff=25 -> 90% Win. Diff=50 -> 99% Win.
+    const scaleFactor = 25; 
+
+    // Logistic Formula: P(HomeWin) = 1 / (1 + 10^(-diff / scale))
+    let probHomeWin = 1 / (1 + Math.pow(10, -rankDiff / scaleFactor));
+
+    // Hard clamp for extreme differences to ensure "miracles" are rare but possible (or impossible if desired)
+    // If difference is > 100 ranks (e.g. Rank 1 vs Rank 101), force >99%
+    if (rankDiff > 100) probHomeWin = 0.995;
+    if (rankDiff < -100) probHomeWin = 0.005;
 
     // Determine Winner of the "flow" of the match
     const rand = Math.random();
     let winner: 'home' | 'away' | 'draw' = 'draw';
     
-    // Draw probability varies. In knockout, draws lead to penalties (so "draw" in 90 mins).
-    // In groups, draws are common (~25%).
-    const drawProb = 0.25;
+    // Draw probability varies based on rank difference and quality.
+    // 1. Calculate rank metrics
+    const absRankDiff = Math.abs(home.fifaRanking - away.fifaRanking);
+    const rankSum = home.fifaRanking + away.fifaRanking;
+
+    // 2. Parity Factor: High difference -> Low draw probability
+    // If diff > 130, factor is 0. If diff is 0, factor is 1.
+    const parityFactor = Math.max(0, 1 - (absRankDiff / 130));
+
+    // 3. Quality Factor: Bad teams (High Sum) -> High draw probability
+    // Range: 0.25 (Top teams) to 0.75 (Bad teams)
+    const qualityFactor = 0.25 + (Math.min(rankSum, 300) / 300) * 0.50;
+
+    // 4. Final Draw Probability
+    let drawProb = parityFactor * qualityFactor;
+    
+    // Safety floor: Always keep at least 2% for miracles
+    if (drawProb < 0.02) drawProb = 0.02;
+
     const remainingProb = 1 - drawProb;
     
     // Re-normalize win probs for the non-draw portion
@@ -97,6 +105,23 @@ export const generateMatchResult = (homeTeamCode: string, awayTeamCode: string, 
     }
     if (goalRand >= cumulative) totalGoals = 7 + Math.floor(Math.random() * 5); // 7 to 11
     
+    // Adjust goals based on team quality (Rank Sum)
+    // Bad teams (High Rank Sum) -> Fewer goals (struggle to score)
+    // Good teams (Low Rank Sum) -> More goals
+    const avgRank = (home.fifaRanking + away.fifaRanking) / 2;
+
+    if (avgRank > 100) {
+        // Poor quality match, reduce goals
+        totalGoals = Math.max(0, totalGoals - 1);
+        // Very poor quality, chance to reduce further
+        if (avgRank > 140 && Math.random() < 0.5) {
+            totalGoals = Math.max(0, totalGoals - 1);
+        }
+    } else if (avgRank < 20) {
+        // High quality match, chance to increase goals
+        if (Math.random() < 0.5) totalGoals += 1;
+    }
+
     // Cap at 12
     if (totalGoals > 12) totalGoals = 12;
 
@@ -195,10 +220,9 @@ export const generateMatchResult = (homeTeamCode: string, awayTeamCode: string, 
         if (homeGoals === awayGoals) {
             isPenalty = true;
             // Weighted by FIFA Ranking
-            // P(HomePenWin) = StrengthHome / TotalStrength
-            // Using the raw strength calculated earlier
+            // P(HomePenWin) = probHomeWin (Logistic Prob calculated earlier)
             const penRand = Math.random();
-            penaltyWinner = penRand < (strengthHome / totalStrength) ? 'home' : 'away';
+            penaltyWinner = penRand < probHomeWin ? 'home' : 'away';
             finalWinnerCode = penaltyWinner === 'home' ? homeTeamCode : awayTeamCode;
         } else {
             finalWinnerCode = homeGoals > awayGoals ? homeTeamCode : awayTeamCode;
