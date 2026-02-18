@@ -161,8 +161,8 @@ export const MatchRow: React.FC<MatchRowProps> = ({ match, result, onUpdate }) =
               {DICE_ICON}
           </button>
           
-          <span className="text-sm font-medium hidden sm:inline text-right text-gray-700 dark:text-gray-300">{homeTeam.name}</span>
-          <span className="text-sm font-medium sm:hidden text-gray-700 dark:text-gray-300">{homeTeam.code}</span>
+          <span className="text-sm font-medium hidden lg:inline text-right text-gray-700 dark:text-gray-300">{homeTeam.name}</span>
+          <span className="text-sm font-medium lg:hidden text-gray-700 dark:text-gray-300">{homeTeam.code}</span>
           <FlagIcon code={homeTeam.flag} size="md" />
         </div>
 
@@ -190,8 +190,8 @@ export const MatchRow: React.FC<MatchRowProps> = ({ match, result, onUpdate }) =
         {/* Away Team */}
         <div className="flex items-center flex-1 justify-start space-x-2">
           <FlagIcon code={awayTeam.flag} size="md" />
-          <span className="text-sm font-medium hidden sm:inline text-gray-700 dark:text-gray-300">{awayTeam.name}</span>
-          <span className="text-sm font-medium sm:hidden text-gray-700 dark:text-gray-300">{awayTeam.code}</span>
+          <span className="text-sm font-medium hidden lg:inline text-gray-700 dark:text-gray-300">{awayTeam.name}</span>
+          <span className="text-sm font-medium lg:hidden text-gray-700 dark:text-gray-300">{awayTeam.code}</span>
         </div>
 
         {/* Cards Toggle Button - Positioned absolutely to the right */}

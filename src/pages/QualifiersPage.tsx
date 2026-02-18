@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { uefaPaths, intercontinentalKeys } from '../data/qualifiers';
 import { QualifierCard } from '../components/QualifierCard';
 import { useTournamentStore } from '../store/useTournamentStore';
@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 export const QualifiersPage: React.FC = () => {
   const { qualifiers, setQualifier } = useTournamentStore();
   const navigate = useNavigate();
+  const continueButtonRef = useRef<HTMLButtonElement>(null);
 
   const handleSelectUefa = (pathId: string, teamCode: string) => {
     setQualifier(pathId, teamCode, false);
@@ -19,6 +20,12 @@ export const QualifiersPage: React.FC = () => {
   const isComplete = 
     uefaPaths.every(p => qualifiers.uefaPaths[p.id]) &&
     intercontinentalKeys.every(k => qualifiers.intercontinentalKeys[k.id]);
+
+  useEffect(() => {
+    if (isComplete) {
+      continueButtonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [isComplete]);
 
   const handleContinue = () => {
     if (isComplete) {
@@ -52,6 +59,7 @@ export const QualifiersPage: React.FC = () => {
 
       <div className="flex justify-center mt-8">
         <button
+          ref={continueButtonRef}
           onClick={handleContinue}
           disabled={!isComplete}
           className={`

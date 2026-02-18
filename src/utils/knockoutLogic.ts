@@ -1,130 +1,79 @@
-import { GroupMember, MatchResult, KnockoutMatch } from '../types';
+import { GroupMember, KnockoutMatch } from '../types';
+import { getPatternForCombination } from './thirdCombinationMap';
 
 export function getKnockoutMatchups(
   groupWinners: Record<string, GroupMember>,
   groupRunnersUp: Record<string, GroupMember>,
   bestThirds: GroupMember[]
 ): KnockoutMatch[] {
-  // 1. Identify available 3rd places
+  // 1. Get the 8 qualified 3rd place teams and sort their group IDs
   const thirds = [...bestThirds];
   const thirdMap = new Map<string, GroupMember>();
   thirds.forEach(t => thirdMap.set(t.groupId, t));
-
-  // 2. Define the 7 slots for 3rd places (from prompt)
-  const thirdSlots = [
-    { id: '1', winnerGroup: 'E', allowed: ['A', 'B', 'C', 'D', 'F'] },
-    { id: '2', winnerGroup: 'I', allowed: ['C', 'D', 'F', 'G', 'H'] },
-    { id: '3', winnerGroup: 'A', allowed: ['C', 'E', 'F', 'H', 'I'] },
-    { id: '6', winnerGroup: 'D', allowed: ['B', 'E', 'F', 'I', 'J'] },
-    { id: '7', winnerGroup: 'G', allowed: ['A', 'E', 'H', 'I', 'J'] },
-    { id: '9', winnerGroup: 'B', allowed: ['E', 'F', 'G', 'I', 'J'] },
-    { id: '10', winnerGroup: 'L', allowed: ['E', 'H', 'I', 'J', 'K'] },
-  ];
-
-  // 3. Assign 3rd places to slots
-  const assignments: Record<string, GroupMember> = {}; // slotId -> member
-  const usedThirds = new Set<string>(); // groupIds
-
-  function solve(slotIndex: number): boolean {
-    if (slotIndex >= thirdSlots.length) return true;
-
-    const slot = thirdSlots[slotIndex];
-    // Find a 3rd place that is in allowed list and not used
-    const candidates = thirds.filter(t => 
-      slot.allowed.includes(t.groupId) && !usedThirds.has(t.groupId)
-    );
-
-    for (const cand of candidates) {
-      assignments[slot.id] = cand;
-      usedThirds.add(cand.groupId);
-      if (solve(slotIndex + 1)) return true;
-      usedThirds.delete(cand.groupId);
-      delete assignments[slot.id];
-    }
-    
-    return false;
-  }
-
-  // If solver fails, fallback to greedy
-  if (!solve(0)) {
-    console.warn("Could not satisfy strict 3rd place rules. Falling back to greedy.");
-    thirdSlots.forEach(slot => {
-        const cand = thirds.find(t => !usedThirds.has(t.groupId));
-        if (cand) {
-            assignments[slot.id] = cand;
-            usedThirds.add(cand.groupId);
-        }
-    });
-  }
-
-  // 4. Handle L8 (1C vs 2A/2B) and L12 (1K vs 2D/2G)
-  // "el que no enfrente al 3° del Grupo F"
-  // If 3F is used in assignments, it's facing a winner. Neither 2A nor 2B faces it.
-  // If 3F is NOT used, it is the remaining third. It MUST face 2A or 2B in extra matches.
   
-  const thirdF = thirds.find(t => t.groupId === 'F');
-  const thirdL = thirds.find(t => t.groupId === 'L');
-
-  let opponentL8 = groupRunnersUp['A'];
-  let remainingRunnerUpAB = groupRunnersUp['B'];
-
-  if (thirdF && !usedThirds.has('F')) {
-      // 3F is the remaining third. It will play in extra matches.
-      // We assume it plays the "remaining" runner up.
-      // So 1C plays 2A. 2B plays 3F.
-      // logic stays default.
-  }
+  // 2. Get the pattern from the map
+  const pattern = getPatternForCombination(thirds.map(t => t.groupId));
   
-  let opponentL12 = groupRunnersUp['D'];
-  let remainingRunnerUpDG = groupRunnersUp['G'];
-
-  if (thirdL && !usedThirds.has('L')) {
-      // 3L is remaining. 1K plays 2D. 2G plays 3L.
-  }
-
-  // 5. Construct the 16 matches
+  // 3. Construct the 16 matches based on Official Match Schedule (Matches 73-88)
   const matches: KnockoutMatch[] = [];
 
-  // Helper to add match
-  const addMatch = (id: string, home: string, away: string) => {
+  // Helper to add match with specific ID
+  const addMatch = (matchNum: number, home: GroupMember | undefined, away: GroupMember | undefined) => {
     matches.push({
-      id: `R32-${id}`,
+      id: `M${matchNum}`,
       round: 'roundOf32',
-      homeTeam: home,
-      awayTeam: away,
+      homeTeam: home?.countryCode || null,
+      awayTeam: away?.countryCode || null,
     });
   };
 
-  // Defined Keys
-  addMatch('1', groupWinners['E']?.countryCode, assignments['1']?.countryCode);
-  addMatch('2', groupWinners['I']?.countryCode, assignments['2']?.countryCode);
-  addMatch('3', groupWinners['A']?.countryCode, assignments['3']?.countryCode);
-  addMatch('4', groupWinners['F']?.countryCode, groupRunnersUp['C']?.countryCode);
-  addMatch('5', groupWinners['H']?.countryCode, groupRunnersUp['J']?.countryCode);
-  addMatch('6', groupWinners['D']?.countryCode, assignments['6']?.countryCode);
-  addMatch('7', groupWinners['G']?.countryCode, assignments['7']?.countryCode);
-  addMatch('8', groupWinners['C']?.countryCode, opponentL8?.countryCode);
-  addMatch('9', groupWinners['B']?.countryCode, assignments['9']?.countryCode);
-  addMatch('10', groupWinners['L']?.countryCode, assignments['10']?.countryCode);
-  addMatch('11', groupWinners['J']?.countryCode, groupRunnersUp['H']?.countryCode);
-  addMatch('12', groupWinners['K']?.countryCode, opponentL12?.countryCode);
+  // Match 73: Runner-up Group A vs Runner-up Group B
+  addMatch(73, groupRunnersUp['A'], groupRunnersUp['B']);
 
-  // Remaining 4 matches (13, 14, 15, 16)
-  const remainingRunners = [
-      groupRunnersUp['E'], groupRunnersUp['F'], groupRunnersUp['I'], groupRunnersUp['K'], groupRunnersUp['L'],
-      remainingRunnerUpAB, remainingRunnerUpDG
-  ].filter(Boolean);
-  
-  const remainingThird = thirds.find(t => !usedThirds.has(t.groupId));
-  
-  const pool = [...remainingRunners];
-  if (remainingThird) pool.push(remainingThird);
-  
-  // Pair them up
-  if (pool.length >= 2) addMatch('13', pool[0].countryCode, pool[1].countryCode);
-  if (pool.length >= 4) addMatch('14', pool[2].countryCode, pool[3].countryCode);
-  if (pool.length >= 6) addMatch('15', pool[4].countryCode, pool[5].countryCode);
-  if (pool.length >= 8) addMatch('16', pool[6].countryCode, pool[7].countryCode);
+  // Match 74: Winner Group E vs Best 3rd place Group A/B/C/D/F
+  addMatch(74, groupWinners['E'], thirdMap.get(pattern['E']));
+
+  // Match 75: Winner Group F vs Runner-up Group C
+  addMatch(75, groupWinners['F'], groupRunnersUp['C']);
+
+  // Match 76: Winner Group C vs Runner-up Group F
+  addMatch(76, groupWinners['C'], groupRunnersUp['F']);
+
+  // Match 77: Winner Group I vs Best 3rd place Group C/D/F/G/H
+  addMatch(77, groupWinners['I'], thirdMap.get(pattern['I']));
+
+  // Match 78: Runner-up Group E vs Runner-up Group I
+  addMatch(78, groupRunnersUp['E'], groupRunnersUp['I']);
+
+  // Match 79: Winner Group A vs Best 3rd place Group C/E/F/H/I
+  addMatch(79, groupWinners['A'], thirdMap.get(pattern['A']));
+
+  // Match 80: Winner Group L vs Best 3rd place Group E/H/I/J/K
+  addMatch(80, groupWinners['L'], thirdMap.get(pattern['L']));
+
+  // Match 81: Winner Group D vs Best 3rd place Group B/E/F/I/J
+  addMatch(81, groupWinners['D'], thirdMap.get(pattern['D']));
+
+  // Match 82: Winner Group G vs Best 3rd place Group A/E/H/I/J
+  addMatch(82, groupWinners['G'], thirdMap.get(pattern['G']));
+
+  // Match 83: Runner-up Group K vs Runner-up Group L
+  addMatch(83, groupRunnersUp['K'], groupRunnersUp['L']);
+
+  // Match 84: Winner Group H vs Runner-up Group J
+  addMatch(84, groupWinners['H'], groupRunnersUp['J']);
+
+  // Match 85: Winner Group B vs Best 3rd place Group E/F/G/I/J
+  addMatch(85, groupWinners['B'], thirdMap.get(pattern['B']));
+
+  // Match 86: Winner Group J vs Runner-up Group H
+  addMatch(86, groupWinners['J'], groupRunnersUp['H']);
+
+  // Match 87: Winner Group K vs Best 3rd place Group D/E/I/J/L
+  addMatch(87, groupWinners['K'], thirdMap.get(pattern['K']));
+
+  // Match 88: Runner-up Group D vs Runner-up Group G
+  addMatch(88, groupRunnersUp['D'], groupRunnersUp['G']);
 
   return matches;
 }
@@ -132,12 +81,22 @@ export function getKnockoutMatchups(
 export function generateBracket(roundOf32Matches: KnockoutMatch[]): KnockoutMatch[] {
     const allMatches = [...roundOf32Matches];
     
-    // Round of 16 (8 matches)
-    for (let i = 1; i <= 8; i++) {
-        const m1 = roundOf32Matches[2*i - 2];
-        const m2 = roundOf32Matches[2*i - 1];
+    // We need to map the R32 matches to R16 matches according to the official bracket.
+    // Official Bracket (Round of 16):
+    // Match 89: Winner M73 vs Winner M74
+    // Match 90: Winner M75 vs Winner M76
+    // ...
+    // Match 96: Winner M87 vs Winner M88
+    
+    // Since our matches array is ordered M73...M88, we can just pair them sequentially.
+    // i=0 (M73) vs i=1 (M74) -> M89
+    
+    // Round of 16 (8 matches: M89 to M96)
+    for (let i = 0; i < 8; i++) {
+        const m1 = roundOf32Matches[2*i];     // e.g. M73
+        const m2 = roundOf32Matches[2*i + 1]; // e.g. M74
         
-        const nextId = `R16-${i}`;
+        const nextId = `M${89 + i}`;
         if (m1) { m1.nextMatchId = nextId; m1.nextMatchSlot = 'home'; }
         if (m2) { m2.nextMatchId = nextId; m2.nextMatchSlot = 'away'; }
         
@@ -149,11 +108,12 @@ export function generateBracket(roundOf32Matches: KnockoutMatch[]): KnockoutMatc
         });
     }
     
-    // Quarter Finals (4 matches)
-    for (let i = 1; i <= 4; i++) {
-        const prev1Id = `R16-${2*i - 1}`;
-        const prev2Id = `R16-${2*i}`;
-        const nextId = `QF-${i}`;
+    // Quarter Finals (4 matches: M97 to M100)
+    // M97: Winner M89 vs Winner M90
+    for (let i = 0; i < 4; i++) {
+        const prev1Id = `M${89 + 2*i}`;     // e.g. M89
+        const prev2Id = `M${89 + 2*i + 1}`; // e.g. M90
+        const nextId = `M${97 + i}`;
         
         const prev1 = allMatches.find(m => m.id === prev1Id);
         const prev2 = allMatches.find(m => m.id === prev2Id);
@@ -169,11 +129,12 @@ export function generateBracket(roundOf32Matches: KnockoutMatch[]): KnockoutMatc
         });
     }
     
-    // Semis (2 matches)
-    for (let i = 1; i <= 2; i++) {
-        const prev1Id = `QF-${2*i - 1}`;
-        const prev2Id = `QF-${2*i}`;
-        const nextId = `SF-${i}`;
+    // Semi Finals (2 matches: M101, M102)
+    // M101: Winner M97 vs Winner M98
+    for (let i = 0; i < 2; i++) {
+        const prev1Id = `M${97 + 2*i}`;
+        const prev2Id = `M${97 + 2*i + 1}`;
+        const nextId = `M${101 + i}`;
         
         const prev1 = allMatches.find(m => m.id === prev1Id);
         const prev2 = allMatches.find(m => m.id === prev2Id);
@@ -189,17 +150,32 @@ export function generateBracket(roundOf32Matches: KnockoutMatch[]): KnockoutMatc
         });
     }
     
-    // Final (1 match)
-    const fId = 'FINAL';
-    const sf1 = allMatches.find(m => m.id === 'SF-1');
-    const sf2 = allMatches.find(m => m.id === 'SF-2');
+    // Final (Match 104) and Third Place (Match 103) - Note: Official usually has 3rd place match
+    // Standard: Winner M101 vs Winner M102 -> Final (M104)
+    // Loser M101 vs Loser M102 -> 3rd Place (M103)
     
+    const sf1 = allMatches.find(m => m.id === 'M101');
+    const sf2 = allMatches.find(m => m.id === 'M102');
+    
+    // Final
+    const fId = 'M104';
     if (sf1) { sf1.nextMatchId = fId; sf1.nextMatchSlot = 'home'; }
     if (sf2) { sf2.nextMatchId = fId; sf2.nextMatchSlot = 'away'; }
     
     allMatches.push({
         id: fId,
         round: 'final',
+        homeTeam: null,
+        awayTeam: null
+    });
+
+    // Third Place Match
+    const tpId = 'M103';
+    // Logic for populating losers would go here during state updates, 
+    // but structure-wise we just define the match.
+    allMatches.push({
+        id: tpId,
+        round: 'thirdPlace',
         homeTeam: null,
         awayTeam: null
     });

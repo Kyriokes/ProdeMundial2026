@@ -64,7 +64,8 @@ export const GroupCard: React.FC<GroupCardProps> = ({ id, name, teams }) => {
                     <div className="flex items-center space-x-2">
                       <FlagIcon code={country.flag} size="sm" />
                       <span className="font-medium truncate max-w-[100px] sm:max-w-none">
-                        {country.name}
+                        <span className="lg:hidden">{country.code}</span>
+                        <span className="hidden lg:inline">{country.name}</span>
                       </span>
                     </div>
                   </td>

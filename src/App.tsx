@@ -17,16 +17,29 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const currentStage = pathname.split('/')[1];
-  const { setFullState } = useTournamentStore();
+  const { setFullState, qualifiers, groups, knockout } = useTournamentStore();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
 
   const [showInstructions, setShowInstructions] = React.useState(false);
 
   React.useEffect(() => {
     const hasSeen = localStorage.getItem('hasSeenInstructions');
-    if (!hasSeen) {
+    
+    // Check if store is empty
+    const isStoreEmpty = Object.keys(qualifiers.uefaPaths).length === 0 &&
+                         Object.keys(qualifiers.intercontinentalKeys).length === 0 &&
+                         Object.keys(groups.matches).length === 0 &&
+                         Object.keys(knockout.matches).length === 0;
+
+    // Check if URL likely has data (to avoid showing on initial load of shared link)
+    const pathParts = window.location.pathname.split('/').filter(Boolean);
+    const hasUrlData = pathParts.length >= 2;
+
+    if (!hasSeen || (isStoreEmpty && !hasUrlData)) {
       setShowInstructions(true);
-      localStorage.setItem('hasSeenInstructions', 'true');
+      if (!hasSeen) {
+        localStorage.setItem('hasSeenInstructions', 'true');
+      }
     }
   }, []);
 
