@@ -55,6 +55,16 @@ export const RouteSync: React.FC = () => {
           if (codes[1]) state.groups = tryDeserialize(codes[1], 'groups');
           if (codes[2]) state.knockout = tryDeserialize(codes[2], 'knockout');
 
+          // Manejo especial: si no hay codes[2], el knockout podría estar en codes[1] (ej. no hay qualifiers)
+          // o incluso en codes[0] (si no hay qualifiers ni groups)
+          if (!codes[1] && codes[0]) {
+             const k = tryDeserialize(codes[0], 'knockout');
+             if (k && Object.keys(k.matches).length > 0) state.knockout = k;
+          } else if (!codes[2] && codes[1]) {
+             const k = tryDeserialize(codes[1], 'knockout');
+             if (k && Object.keys(k.matches).length > 0) state.knockout = k;
+          }
+
           // Only update if we actually got something valid
           if (state.qualifiers || state.groups || state.knockout) {
              setFullState(state);
@@ -123,6 +133,15 @@ export const RouteSync: React.FC = () => {
           codePath += `&${knockoutCode}`;
         }
       }
+    } else if (groupCode) {
+        // En caso de que no haya qualifierCode pero sí groupCode
+        codePath = `/${groupCode}`;
+        if (knockoutCode) {
+          codePath += `&${knockoutCode}`;
+        }
+    } else if (knockoutCode) {
+        // En caso de que solo haya knockoutCode
+        codePath = `/${knockoutCode}`;
     }
     
     // If we have no codes, we are at root/qualifiers empty

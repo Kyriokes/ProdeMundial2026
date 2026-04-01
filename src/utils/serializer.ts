@@ -184,6 +184,12 @@ export class StateSerializer {
           if (result.isPenalty && result.penaltyWinner) {
             str += `:${result.penaltyWinner === 'home' ? 'pH' : 'pV'}`;
           }
+          
+          // Ahora guardamos explícitamente el winner code si existe
+          if (result.winner) {
+            str += `:${result.winner}`;
+          }
+          
           results.push(str);
         }
       }
@@ -235,10 +241,17 @@ export class StateSerializer {
            
            const result: MatchResult & { winner?: string } = { homeGoals, awayGoals };
            
-           if (p[2]) {
+           // Extract penalty or winner info from remaining parts
+           let winnerPartIndex = 2;
+
+           if (p[2] === 'pH' || p[2] === 'pV') {
              result.isPenalty = true;
              result.penaltyWinner = p[2] === 'pH' ? 'home' : 'away';
-             // We don't set winner code here, logic derives it
+             winnerPartIndex = 3;
+           }
+           
+           if (p[winnerPartIndex]) {
+             result.winner = p[winnerPartIndex];
            }
            
            matches[matchId] = result;

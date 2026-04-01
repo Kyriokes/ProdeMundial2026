@@ -44,15 +44,19 @@ export const KnockoutMatchCard: React.FC<KnockoutMatchCardProps> = ({ match, onU
       }
     }
     
+    // We now always pass winner along with the result to the store
     onUpdate({ ...newResult, winner });
   };
 
   const handlePenaltyChange = (winnerSide: 'home' | 'away') => {
-    const winner = winnerSide === 'home' ? match.homeTeam! : match.awayTeam!;
+    const isCurrentWinner = match.result?.penaltyWinner === winnerSide;
+    const penaltyWinner = isCurrentWinner ? undefined : winnerSide;
+    const winner = penaltyWinner === 'home' ? match.homeTeam : penaltyWinner === 'away' ? match.awayTeam : undefined;
+    
     onUpdate({
-      ...match.result!,
-      isPenalty: true,
-      penaltyWinner: winnerSide,
+      ...match.result,
+      isPenalty: !!penaltyWinner,
+      penaltyWinner,
       winner
     });
   };
