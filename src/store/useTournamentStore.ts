@@ -76,13 +76,22 @@ export const useTournamentStore = create<TournamentStore>((set) => ({
   },
 
   setFullState: (newState) => {
-    set((state) => ({
-      ...state,
-      ...newState,
-      qualifiers: { ...state.qualifiers, ...(newState.qualifiers || {}) },
-      groups: { ...state.groups, ...(newState.groups || {}) },
-      knockout: { ...state.knockout, ...(newState.knockout || {}) }
-    }));
+    set((state) => {
+      // Importante: Para el knockout, queremos reemplazar completamente el objeto de matches
+      // con el hidratado de la URL, no solo "mezclarlo", ya que de lo contrario podríamos
+      // retener basura o no limpiar estados borrados.
+      const updatedKnockout = newState.knockout 
+          ? { matches: { ...newState.knockout.matches } } 
+          : { ...state.knockout };
+          
+      return {
+        ...state,
+        ...newState,
+        qualifiers: { ...state.qualifiers, ...(newState.qualifiers || {}) },
+        groups: { ...state.groups, ...(newState.groups || {}) },
+        knockout: updatedKnockout
+      };
+    });
   },
 
   reset: () => set(initialState)

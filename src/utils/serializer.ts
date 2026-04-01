@@ -160,40 +160,30 @@ export class StateSerializer {
   }
 
   // --- Knockout Serialization ---
-  // IDs: R32-1..16, R16-1..8, QF-1..4, SF-1..2, FINAL
+  // IDs: M73 to M104 (32 matches total)
   static serializeKnockout(knockout: KnockoutState): string {
-    const rounds = [
-      { prefix: 'R32-', count: 16 },
-      { prefix: 'R16-', count: 8 },
-      { prefix: 'QF-', count: 4 },
-      { prefix: 'SF-', count: 2 },
-      { prefix: 'FINAL', count: 1 } // Special case
-    ];
-    
     const results: string[] = [];
     
-    rounds.forEach(round => {
-      for (let i = 1; i <= round.count; i++) {
-        const matchId = round.prefix === 'FINAL' ? 'FINAL' : `${round.prefix}${i}`;
-        const result = knockout.matches[matchId];
-        
-        if (!result || result.homeGoals === undefined || result.awayGoals === undefined) {
-          results.push('_');
-        } else {
-          let str = `${result.homeGoals}:${result.awayGoals}`;
-          if (result.isPenalty && result.penaltyWinner) {
-            str += `:${result.penaltyWinner === 'home' ? 'pH' : 'pV'}`;
-          }
-          
-          // Ahora guardamos explícitamente el winner code si existe
-          if (result.winner) {
-            str += `:${result.winner}`;
-          }
-          
-          results.push(str);
+    for (let i = 73; i <= 104; i++) {
+      const matchId = `M${i}`;
+      const result = knockout.matches[matchId];
+      
+      if (!result || result.homeGoals === undefined || result.awayGoals === undefined) {
+        results.push('_');
+      } else {
+        let str = `${result.homeGoals}:${result.awayGoals}`;
+        if (result.isPenalty && result.penaltyWinner) {
+          str += `:${result.penaltyWinner === 'home' ? 'pH' : 'pV'}`;
         }
+        
+        // Ahora guardamos explícitamente el winner code si existe
+        if (result.winner) {
+          str += `:${result.winner}`;
+        }
+        
+        results.push(str);
       }
-    });
+    }
     
     // Trim trailing underscores
     let raw = results.join(';');
@@ -214,48 +204,38 @@ export class StateSerializer {
       const parts = raw.split(';');
       const matches: Record<string, MatchResult & { winner?: string }> = {};
       
-      const rounds = [
-        { prefix: 'R32-', count: 16 },
-        { prefix: 'R16-', count: 8 },
-        { prefix: 'QF-', count: 4 },
-        { prefix: 'SF-', count: 2 },
-        { prefix: 'FINAL', count: 1 }
-      ];
-      
       let idx = 0;
-      for (const round of rounds) {
-        for (let i = 1; i <= round.count; i++) {
-           if (idx >= parts.length) break;
-           const str = parts[idx];
-           idx++;
-           
-           if (str === '_' || str === '') continue;
-           
-           const matchId = round.prefix === 'FINAL' ? 'FINAL' : `${round.prefix}${i}`;
-           
-           const p = str.split(':');
-           const homeGoals = parseInt(p[0]);
-           const awayGoals = parseInt(p[1]);
-           
-           if (isNaN(homeGoals) || isNaN(awayGoals)) continue;
-           
-           const result: MatchResult & { winner?: string } = { homeGoals, awayGoals };
-           
-           // Extract penalty or winner info from remaining parts
-           let winnerPartIndex = 2;
+      for (let i = 73; i <= 104; i++) {
+         if (idx >= parts.length) break;
+         const str = parts[idx];
+         idx++;
+         
+         if (str === '_' || str === '') continue;
+         
+         const matchId = `M${i}`;
+         
+         const p = str.split(':');
+         const homeGoals = parseInt(p[0]);
+         const awayGoals = parseInt(p[1]);
+         
+         if (isNaN(homeGoals) || isNaN(awayGoals)) continue;
+         
+         const result: MatchResult & { winner?: string } = { homeGoals, awayGoals };
+         
+         // Extract penalty or winner info from remaining parts
+         let winnerPartIndex = 2;
 
-           if (p[2] === 'pH' || p[2] === 'pV') {
-             result.isPenalty = true;
-             result.penaltyWinner = p[2] === 'pH' ? 'home' : 'away';
-             winnerPartIndex = 3;
-           }
-           
-           if (p[winnerPartIndex]) {
-             result.winner = p[winnerPartIndex];
-           }
-           
-           matches[matchId] = result;
-        }
+         if (p[2] === 'pH' || p[2] === 'pV') {
+           result.isPenalty = true;
+           result.penaltyWinner = p[2] === 'pH' ? 'home' : 'away';
+           winnerPartIndex = 3;
+         }
+         
+         if (p[winnerPartIndex]) {
+           result.winner = p[winnerPartIndex];
+         }
+         
+         matches[matchId] = result;
       }
       
       return { matches };
@@ -287,12 +267,13 @@ export class RouteStateManager {
     if (codes[0]) {
       const q = StateSerializer.deserializeQualifiers(codes[0]);
       if (q) state.qualifiers = q;
-      // Fallback to old format if new fails?
-      else if (codes[0].startsWith('ey')) { // JSON usually starts with { which base64 might look like...
-         // Actually LZString compressed JSON usually doesn't look like specific pattern easily detectable vs compressed CSV
-         // But we can try-catch.
-         const old = StateSerializer.deserialize(codes[0]);
-         if (old) state.qualifiers = old;
+      else {
+         const k = StateSerializer.deserializeKnockout(codes[0]);
+         if (k && Object.keys(k.matches).length > 0) state.knockout = k;
+         else {
+            const old = StateSerializer.deserialize(codes[0]);
+            if (old) state.qualifiers = old;
+         }
       }
     }
     
@@ -300,8 +281,12 @@ export class RouteStateManager {
       const g = StateSerializer.deserializeGroups(codes[1]);
       if (g) state.groups = g;
       else {
-         const old = StateSerializer.deserialize(codes[1]);
-         if (old) state.groups = old;
+         const k = StateSerializer.deserializeKnockout(codes[1]);
+         if (k && Object.keys(k.matches).length > 0) state.knockout = k;
+         else {
+             const old = StateSerializer.deserialize(codes[1]);
+             if (old) state.groups = old;
+         }
       }
     }
     

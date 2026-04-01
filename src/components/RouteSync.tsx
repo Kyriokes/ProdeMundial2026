@@ -18,58 +18,60 @@ export const RouteSync: React.FC = () => {
       
       const parts = path.split('/').filter(Boolean); // ["stats", "code1&code2"]
       
-      if (parts.length >= 2) {
-          const codesStr = parts[1]; // "code1&code2"
-          
-          // We need to parse this manually because our RouteStateManager.parseUrl 
-          // assumes /stage/codes format but splits by / again inside which might be confusing
-          
-          const codes = codesStr.split('&');
-          const state: Partial<any> = {};
+    const currentStage = parts[0] || 'groups'; // 'groups', 'knockout', 'stats'
 
-          // Helper to try new format then old
-          const tryDeserialize = (code: string, type: 'qualifiers' | 'groups' | 'knockout') => {
-              if (!code) return null;
-              
-              if (type === 'qualifiers') {
-                  const res = StateSerializer.deserializeQualifiers(code);
-                  if (res) return res;
-                  // Try legacy full state json if it was monolithic? No, it was per-section usually.
-                  // Or maybe user pasted old link format.
-                  return StateSerializer.deserialize(code);
-              }
-              if (type === 'groups') {
-                  const res = StateSerializer.deserializeGroups(code);
-                  if (res) return res;
-                  return StateSerializer.deserialize(code);
-              }
-              if (type === 'knockout') {
-                  const res = StateSerializer.deserializeKnockout(code);
-                  if (res) return res;
-                  return StateSerializer.deserialize(code);
-              }
-              return null;
-          };
+    if (parts.length >= 2) {
+        const codesStr = parts.slice(1).join('/'); 
+        
+        // Decodificamos la URL por si el navegador o el usuario compartieron el link con los '&' convertidos a '%26'
+        const decodedCodesStr = decodeURIComponent(codesStr);
+        const codes = decodedCodesStr.split('&');
+        const state: Partial<any> = {};
 
-          if (codes[0]) state.qualifiers = tryDeserialize(codes[0], 'qualifiers');
-          if (codes[1]) state.groups = tryDeserialize(codes[1], 'groups');
-          if (codes[2]) state.knockout = tryDeserialize(codes[2], 'knockout');
+        // Helper to try new format then old
+        const tryDeserialize = (code: string, type: 'qualifiers' | 'groups' | 'knockout') => {
+            if (!code) return null;
+            
+            if (type === 'qualifiers') {
+                const res = StateSerializer.deserializeQualifiers(code);
+                if (res) return res;
+                return StateSerializer.deserialize(code);
+            }
+            if (type === 'groups') {
+                const res = StateSerializer.deserializeGroups(code);
+                if (res) return res;
+                return StateSerializer.deserialize(code);
+            }
+            if (type === 'knockout') {
+                const res = StateSerializer.deserializeKnockout(code);
+                if (res) return res;
+                return StateSerializer.deserialize(code);
+            }
+            return null;
+        };
 
-          // Manejo especial: si no hay codes[2], el knockout podría estar en codes[1] (ej. no hay qualifiers)
-          // o incluso en codes[0] (si no hay qualifiers ni groups)
-          if (!codes[1] && codes[0]) {
-             const k = tryDeserialize(codes[0], 'knockout');
-             if (k && Object.keys(k.matches).length > 0) state.knockout = k;
-          } else if (!codes[2] && codes[1]) {
-             const k = tryDeserialize(codes[1], 'knockout');
-             if (k && Object.keys(k.matches).length > 0) state.knockout = k;
-          }
+        // Strict mapping based on the new stable URL format
+        if (codes[0]) state.qualifiers = tryDeserialize(codes[0], 'qualifiers');
+        if (codes[1]) state.groups = tryDeserialize(codes[1], 'groups');
+        if (codes[2]) state.knockout = tryDeserialize(codes[2], 'knockout');
 
-          // Only update if we actually got something valid
-          if (state.qualifiers || state.groups || state.knockout) {
-             setFullState(state);
-          }
-      } else if (parts.length === 1 && parts[0] === 'stats') {
+        // Por seguridad para retrocompatibilidad:
+        if (codes.length < 3) {
+           if (!state.knockout && codes[0]) {
+              const k = tryDeserialize(codes[0], 'knockout');
+              if (k && Object.keys(k.matches).length > 0) state.knockout = k;
+           }
+           if (!state.knockout && codes[1]) {
+              const k = tryDeserialize(codes[1], 'knockout');
+              if (k && Object.keys(k.matches).length > 0) state.knockout = k;
+           }
+        }
+
+        // Only update if we actually got something valid
+        if (state.qualifiers || state.groups || state.knockout) {
+           setFullState(state);
+        }
+    } else if (parts.length === 1 && parts[0] === 'stats') {
           // If we are in /stats but without codes, try to load from localStorage or just wait?
           // The issue is: if URL is just /stats, we don't have state in URL.
           // But if we navigated there from inside the app, the state is in the store.
@@ -123,25 +125,14 @@ export const RouteSync: React.FC = () => {
     // The user might be viewing a specific snapshot or just navigating.
     if (currentStage === 'stats') return;
 
-    // Construct the full code path using & separator
+    // Construct the full code path using & separator, maintaining positions
+    // Formato estricto: /stage/qualifierCode&groupCode&knockoutCode
+    // Si un código falta, dejamos el espacio vacío para que siempre se pueda hacer split('&') y queden en sus índices
     let codePath = '';
-    if (qualifierCode) {
-      codePath = `/${qualifierCode}`;
-      if (groupCode) {
-        codePath += `&${groupCode}`;
-        if (knockoutCode) {
-          codePath += `&${knockoutCode}`;
-        }
-      }
-    } else if (groupCode) {
-        // En caso de que no haya qualifierCode pero sí groupCode
-        codePath = `/${groupCode}`;
-        if (knockoutCode) {
-          codePath += `&${knockoutCode}`;
-        }
-    } else if (knockoutCode) {
-        // En caso de que solo haya knockoutCode
-        codePath = `/${knockoutCode}`;
+    
+    // Si no hay ningún código en absoluto, codePath queda vacío
+    if (qualifierCode || groupCode || knockoutCode) {
+       codePath = `/${qualifierCode}&${groupCode}&${knockoutCode}`;
     }
     
     // If we have no codes, we are at root/qualifiers empty
