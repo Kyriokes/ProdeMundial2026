@@ -12,41 +12,17 @@ export const GroupsPage: React.FC = () => {
   const groupsWithTeams = useMemo(() => {
     return initialGroups.map(group => {
       const resolvedTeams = group.teams.map(teamCode => {
-        if (teamCode === 'pathA') return qualifiers.uefaPaths.pathA;
-        if (teamCode === 'pathB') return qualifiers.uefaPaths.pathB;
-        if (teamCode === 'pathC') return qualifiers.uefaPaths.pathC;
-        if (teamCode === 'pathD') return qualifiers.uefaPaths.pathD;
-        if (teamCode === 'keyA') return qualifiers.intercontinentalKeys.keyA;
-        if (teamCode === 'keyB') return qualifiers.intercontinentalKeys.keyB;
+        if (teamCode === 'pathA') return qualifiers?.uefaPaths?.pathA || 'BIH';
+        if (teamCode === 'pathB') return qualifiers?.uefaPaths?.pathB || 'SWE';
+        if (teamCode === 'pathC') return qualifiers?.uefaPaths?.pathC || 'TUR';
+        if (teamCode === 'pathD') return qualifiers?.uefaPaths?.pathD || 'CZE';
+        if (teamCode === 'keyA') return qualifiers?.intercontinentalKeys?.keyA || 'COD';
+        if (teamCode === 'keyB') return qualifiers?.intercontinentalKeys?.keyB || 'IRQ';
         return teamCode;
       });
       return { ...group, teams: resolvedTeams };
     });
   }, [qualifiers]);
-
-  // Check if all qualifiers are selected
-  // If not, we might have undefined teams.
-  // We should redirect to qualifiers if data is missing?
-  // Or just show loading/placeholder?
-  // The route sync should handle this, but if user direct links to /groups without qualifiers param, state is empty.
-  // And if state is empty, teams will be undefined.
-  
-  const isMissingQualifiers = groupsWithTeams.some(g => g.teams.some(t => !t));
-
-  if (isMissingQualifiers) {
-    return (
-      <div className="text-center py-20">
-        <h2 className="text-2xl font-bold mb-4">Faltan datos de clasificación</h2>
-        <p className="mb-4">Por favor completa la fase de clasificación primero.</p>
-        <button 
-          onClick={() => navigate('/qualifiers')}
-          className="bg-blue-600 text-white px-6 py-2 rounded-lg"
-        >
-          Ir a Clasificación
-        </button>
-      </div>
-    );
-  }
 
   // Check if all matches are played to enable "Continue"
   // We need to generate all matches for all groups and check if they have results.

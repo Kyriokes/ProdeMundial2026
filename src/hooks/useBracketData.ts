@@ -12,13 +12,12 @@ export const useBracketData = () => {
     // Reconstruct groups with teams
     const groupsWithTeams = initialGroups.map(group => {
       const resolvedTeams = group.teams.map(teamCode => {
-        if (!qualifiers?.uefaPaths || !qualifiers?.intercontinentalKeys) return teamCode; // Safety check
-        if (teamCode === 'pathA') return qualifiers.uefaPaths.pathA;
-        if (teamCode === 'pathB') return qualifiers.uefaPaths.pathB;
-        if (teamCode === 'pathC') return qualifiers.uefaPaths.pathC;
-        if (teamCode === 'pathD') return qualifiers.uefaPaths.pathD;
-        if (teamCode === 'keyA') return qualifiers.intercontinentalKeys.keyA;
-        if (teamCode === 'keyB') return qualifiers.intercontinentalKeys.keyB;
+        if (teamCode === 'pathA') return qualifiers?.uefaPaths?.pathA || 'BIH';
+        if (teamCode === 'pathB') return qualifiers?.uefaPaths?.pathB || 'SWE';
+        if (teamCode === 'pathC') return qualifiers?.uefaPaths?.pathC || 'TUR';
+        if (teamCode === 'pathD') return qualifiers?.uefaPaths?.pathD || 'CZE';
+        if (teamCode === 'keyA') return qualifiers?.intercontinentalKeys?.keyA || 'COD';
+        if (teamCode === 'keyB') return qualifiers?.intercontinentalKeys?.keyB || 'IRQ';
         return teamCode;
       });
       
@@ -57,19 +56,21 @@ export const useBracketData = () => {
         if (storedResult) {
             match.result = storedResult;
             
-            // Derive winner if not explicitly stored (hydration case)
-            if (!storedResult.winner) {
-                 if (storedResult.homeGoals !== undefined && storedResult.awayGoals !== undefined) {
-                    if (storedResult.homeGoals > storedResult.awayGoals) {
-                        match.winner = match.homeTeam || undefined;
-                    } else if (storedResult.awayGoals > storedResult.homeGoals) {
-                        match.winner = match.awayTeam || undefined;
-                    } else if (storedResult.isPenalty && storedResult.penaltyWinner) {
-                        match.winner = storedResult.penaltyWinner === 'home' ? (match.homeTeam || undefined) : (match.awayTeam || undefined);
-                    }
-                 }
-            } else {
-                match.winner = storedResult.winner;
+            // Derive winner based on current teams and stored scores
+            if (storedResult.homeGoals !== undefined && storedResult.awayGoals !== undefined) {
+                if (storedResult.homeGoals > storedResult.awayGoals) {
+                    match.winner = match.homeTeam || undefined;
+                } else if (storedResult.awayGoals > storedResult.homeGoals) {
+                    match.winner = match.awayTeam || undefined;
+                } else if (storedResult.isPenalty && storedResult.penaltyWinner) {
+                    match.winner = storedResult.penaltyWinner === 'home' ? (match.homeTeam || undefined) : (match.awayTeam || undefined);
+                }
+            } else if (storedResult.winner) {
+                if (storedResult.winner === match.homeTeam || storedResult.winner === match.awayTeam) {
+                    match.winner = storedResult.winner;
+                } else {
+                    match.winner = undefined;
+                }
             }
             
             // Propagate to next match

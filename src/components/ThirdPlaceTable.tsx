@@ -15,12 +15,12 @@ export const ThirdPlaceTable: React.FC = () => {
         initialGroups.forEach(group => {
              // Resolve teams (handling placeholders if any, similar to GroupsPage)
              const resolvedTeams = group.teams.map(teamCode => {
-                if (teamCode === 'pathA') return qualifiers.uefaPaths.pathA;
-                if (teamCode === 'pathB') return qualifiers.uefaPaths.pathB;
-                if (teamCode === 'pathC') return qualifiers.uefaPaths.pathC;
-                if (teamCode === 'pathD') return qualifiers.uefaPaths.pathD;
-                if (teamCode === 'keyA') return qualifiers.intercontinentalKeys.keyA;
-                if (teamCode === 'keyB') return qualifiers.intercontinentalKeys.keyB;
+                if (teamCode === 'pathA') return qualifiers?.uefaPaths?.pathA || 'BIH';
+                if (teamCode === 'pathB') return qualifiers?.uefaPaths?.pathB || 'SWE';
+                if (teamCode === 'pathC') return qualifiers?.uefaPaths?.pathC || 'TUR';
+                if (teamCode === 'pathD') return qualifiers?.uefaPaths?.pathD || 'CZE';
+                if (teamCode === 'keyA') return qualifiers?.intercontinentalKeys?.keyA || 'COD';
+                if (teamCode === 'keyB') return qualifiers?.intercontinentalKeys?.keyB || 'IRQ';
                 return teamCode;
             });
 

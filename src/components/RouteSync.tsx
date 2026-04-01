@@ -101,8 +101,14 @@ export const RouteSync: React.FC = () => {
       
     // Determine base path based on current stage or what's completed
     const currentPath = window.location.pathname;
-    const currentStage = currentPath.split('/')[1] || 'qualifiers';
+    const currentStage = currentPath.split('/')[1] || 'groups';
     
+    // Check if the current stage is a valid one
+    const validStages = ['groups', 'knockout', 'stats'];
+    if (!validStages.includes(currentStage)) {
+        return; // Don't sync state to invalid URLs (let the 404 page handle it)
+    }
+
     // If we are in /stats, DO NOT redirect/sync URL automatically to avoid overwriting state or loops.
     // The user might be viewing a specific snapshot or just navigating.
     if (currentStage === 'stats') return;
@@ -129,7 +135,7 @@ export const RouteSync: React.FC = () => {
       // Wait, codePath is generated FROM state.
       // If codePath is empty, it means state is empty.
       
-      if (currentPath !== '/qualifiers' && currentPath !== '/' && currentPath !== '/stats') {
+      if (currentPath !== '/groups' && currentPath !== '/' && currentPath !== '/stats') {
          // Don't redirect if just empty, unless we want to enforce structure
       }
       return;

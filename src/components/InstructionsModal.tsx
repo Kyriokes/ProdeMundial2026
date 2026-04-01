@@ -10,20 +10,25 @@ export const InstructionsModal: React.FC<InstructionsModalProps> = ({ isOpen, on
   if (!isOpen) return null;
 
   const mainFlow = [
-    {
-      icon: <ListOrdered className="text-blue-500" size={24} />,
-      title: "1. Clasificación",
-      description: "Define los cupos de repechaje para completar los 48 equipos."
-    },
+    // {
+    //   icon: <ListOrdered className="text-blue-500" size={24} />,
+    //   title: "1. Clasificación",
+    //   description: "Define los cupos de repechaje para completar los 48 equipos."
+    // },
     {
       icon: <GitBranch className="text-green-500" size={24} />,
-      title: "2. Fase de Grupos",
+      title: "1. Fase de Grupos",
       description: "Simula partidos manual o aleatoriamente. Las tablas se actualizan solas."
     },
     {
       icon: <Trophy className="text-yellow-500" size={24} />,
-      title: "3. Fase Eliminatoria",
+      title: "2. Fase Eliminatoria",
       description: "Avanza por el cuadro final hasta consagrar al Campeón 2026."
+    },
+    {
+      icon: <ListOrdered className="text-yellow-500" size={24} />,
+      title: "2. Tabla General",
+      description: "Estadística general del torneo."
     }
   ];
 

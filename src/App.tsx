@@ -1,9 +1,9 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
-import { QualifiersPage } from './pages/QualifiersPage';
 import { GroupsPage } from './pages/GroupsPage';
 import { KnockoutPage } from './pages/KnockoutPage';
 import { StatsPage } from './pages/StatsPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 import { RouteSync } from './components/RouteSync';
 import { Share2, Moon, Sun, Dices, Eraser, BarChart2, Trophy, Menu, X, CircleHelp } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
@@ -26,9 +26,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const hasSeen = localStorage.getItem('hasSeenInstructions');
     
     // Check if store is empty
-    const isStoreEmpty = Object.keys(qualifiers.uefaPaths).length === 0 &&
-                         Object.keys(qualifiers.intercontinentalKeys).length === 0 &&
-                         Object.keys(groups.matches).length === 0 &&
+    const isStoreEmpty = Object.keys(groups.matches).length === 0 &&
                          Object.keys(knockout.matches).length === 0;
 
     // Check if URL likely has data (to avoid showing on initial load of shared link)
@@ -92,7 +90,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               <button
                 onClick={() => {
                   toast.dismiss(t);
-                  const newState = randomizeTournament();
+                  const newState = randomizeTournament(qualifiers);
                   setFullState(newState);
                   navigate('/knockout');
                   toast.success('¡Torneo randomizado con éxito!');
@@ -170,24 +168,17 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           
           <div className="hidden md:flex space-x-1 items-center">
             <Link 
-              to="/qualifiers" 
-              className={`px-4 py-2 rounded-md transition-colors ${currentStage === 'qualifiers' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}`}
-            >
-              1. Clasificación
-            </Link>
-            <span className="self-center text-gray-300 dark:text-gray-600">/</span>
-            <Link 
               to="/groups" 
               className={`px-4 py-2 rounded-md transition-colors ${currentStage === 'groups' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}`}
             >
-              2. Grupos
+              1. Grupos
             </Link>
             <span className="self-center text-gray-300 dark:text-gray-600">/</span>
             <Link 
               to="/knockout" 
               className={`px-4 py-2 rounded-md transition-colors ${currentStage === 'knockout' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}`}
             >
-              3. Eliminatorias
+              2. Eliminatorias
             </Link>
             <span className="self-center text-gray-300 dark:text-gray-600">/</span>
             <Link 
@@ -196,7 +187,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             >
               <span className="flex items-center gap-1.5">
                 <Trophy size={16} />
-                Tabla
+                3. Tabla
               </span>
             </Link>
             <button
@@ -245,25 +236,18 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <div className="md:hidden absolute top-16 left-0 w-full bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-lg z-40">
              <div className="flex flex-col p-4 space-y-2">
                 <Link 
-                  to="/qualifiers" 
-                  className={`px-4 py-3 rounded-md transition-colors ${currentStage === 'qualifiers' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  1. Clasificación
-                </Link>
-                <Link 
                   to="/groups" 
                   className={`px-4 py-3 rounded-md transition-colors ${currentStage === 'groups' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  2. Grupos
+                  1. Grupos
                 </Link>
                 <Link 
                   to="/knockout" 
                   className={`px-4 py-3 rounded-md transition-colors ${currentStage === 'knockout' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  3. Eliminatorias
+                  2. Eliminatorias
                 </Link>
                 <Link 
                   to="/stats" 
@@ -272,7 +256,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 >
                   <span className="flex items-center gap-1.5">
                     <Trophy size={16} />
-                    Tabla
+                    3. Tabla
                   </span>
                 </Link>
 
@@ -324,11 +308,11 @@ function App() {
       <Toaster richColors position="top-center" visibleToasts={1} />
       <Layout>
         <Routes>
-          <Route path="/" element={<Navigate to="/qualifiers" replace />} />
-          <Route path="/qualifiers/*" element={<QualifiersPage />} />
+          <Route path="/" element={<Navigate to="/groups" replace />} />
           <Route path="/groups/*" element={<GroupsPage />} />
           <Route path="/knockout/*" element={<KnockoutPage />} />
           <Route path="/stats" element={<StatsPage />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Layout>
     </BrowserRouter>

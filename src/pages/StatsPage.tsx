@@ -51,13 +51,20 @@ export const StatsPage: React.FC = () => {
       group.teams.forEach(teamCode => {
         let resolvedCode = teamCode;
         // Try to resolve placeholders if possible, otherwise keep as is (to be safe)
-        if (qualifiers.uefaPaths && qualifiers.intercontinentalKeys) {
-            if (teamCode === 'pathA') resolvedCode = qualifiers.uefaPaths.pathA;
-            else if (teamCode === 'pathB') resolvedCode = qualifiers.uefaPaths.pathB;
-            else if (teamCode === 'pathC') resolvedCode = qualifiers.uefaPaths.pathC;
-            else if (teamCode === 'pathD') resolvedCode = qualifiers.uefaPaths.pathD;
-            else if (teamCode === 'keyA') resolvedCode = qualifiers.intercontinentalKeys.keyA;
-            else if (teamCode === 'keyB') resolvedCode = qualifiers.intercontinentalKeys.keyB;
+        if (qualifiers?.uefaPaths && qualifiers?.intercontinentalKeys) {
+            if (teamCode === 'pathA') resolvedCode = qualifiers.uefaPaths.pathA || 'BIH';
+            else if (teamCode === 'pathB') resolvedCode = qualifiers.uefaPaths.pathB || 'SWE';
+            else if (teamCode === 'pathC') resolvedCode = qualifiers.uefaPaths.pathC || 'TUR';
+            else if (teamCode === 'pathD') resolvedCode = qualifiers.uefaPaths.pathD || 'CZE';
+            else if (teamCode === 'keyA') resolvedCode = qualifiers.intercontinentalKeys.keyA || 'COD';
+            else if (teamCode === 'keyB') resolvedCode = qualifiers.intercontinentalKeys.keyB || 'IRQ';
+        } else {
+            if (teamCode === 'pathA') resolvedCode = 'BIH';
+            else if (teamCode === 'pathB') resolvedCode = 'SWE';
+            else if (teamCode === 'pathC') resolvedCode = 'TUR';
+            else if (teamCode === 'pathD') resolvedCode = 'CZE';
+            else if (teamCode === 'keyA') resolvedCode = 'COD';
+            else if (teamCode === 'keyB') resolvedCode = 'IRQ';
         }
 
         // Only add if we have a valid country code (not undefined, not empty)
@@ -89,12 +96,12 @@ export const StatsPage: React.FC = () => {
     try {
         initialGroups.forEach(group => {
             const resolvedTeams = group.teams.map(teamCode => {
-                if (teamCode === 'pathA') return qualifiers.uefaPaths?.pathA;
-                if (teamCode === 'pathB') return qualifiers.uefaPaths?.pathB;
-                if (teamCode === 'pathC') return qualifiers.uefaPaths?.pathC;
-                if (teamCode === 'pathD') return qualifiers.uefaPaths?.pathD;
-                if (teamCode === 'keyA') return qualifiers.intercontinentalKeys?.keyA;
-                if (teamCode === 'keyB') return qualifiers.intercontinentalKeys?.keyB;
+                if (teamCode === 'pathA') return qualifiers?.uefaPaths?.pathA || 'BIH';
+                if (teamCode === 'pathB') return qualifiers?.uefaPaths?.pathB || 'SWE';
+                if (teamCode === 'pathC') return qualifiers?.uefaPaths?.pathC || 'TUR';
+                if (teamCode === 'pathD') return qualifiers?.uefaPaths?.pathD || 'CZE';
+                if (teamCode === 'keyA') return qualifiers?.intercontinentalKeys?.keyA || 'COD';
+                if (teamCode === 'keyB') return qualifiers?.intercontinentalKeys?.keyB || 'IRQ';
                 return teamCode;
             });
 

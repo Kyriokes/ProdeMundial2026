@@ -11,8 +11,16 @@ interface TournamentStore extends TournamentState {
 
 const initialState: TournamentState = {
   qualifiers: {
-    uefaPaths: {},
-    intercontinentalKeys: {}
+    uefaPaths: {
+      pathA: 'BIH',
+      pathB: 'SWE',
+      pathC: 'TUR',
+      pathD: 'CZE'
+    },
+    intercontinentalKeys: {
+      keyA: 'COD',
+      keyB: 'IRQ'
+    }
   },
   groups: {
     matches: {}

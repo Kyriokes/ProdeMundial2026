@@ -1,7 +1,6 @@
-import { MatchResult, TournamentState, QualifiersState, GroupsState, KnockoutState, KnockoutMatch } from '../types';
+import { MatchResult, TournamentState, GroupsState, KnockoutState, KnockoutMatch } from '../types';
 import { countries } from '../data/countries';
 import { initialGroups } from '../data/groups';
-import { uefaPaths, intercontinentalKeys } from '../data/qualifiers';
 import { generateGroupMatches, getQualifiedTeams } from './calculations';
 import { getKnockoutMatchups, generateBracket } from './knockoutLogic';
 
@@ -244,22 +243,9 @@ export const generateMatchResult = (homeTeamCode: string, awayTeamCode: string, 
     };
 };
 
-export const randomizeTournament = (): TournamentState => {
+export const randomizeTournament = (currentQualifiers: any): TournamentState => {
     // 1. Qualifiers
-    const newQualifiers: QualifiersState = {
-        uefaPaths: {},
-        intercontinentalKeys: {}
-    };
-
-    uefaPaths.forEach(path => {
-        const randomTeam = path.teams[Math.floor(Math.random() * path.teams.length)];
-        newQualifiers.uefaPaths[path.id] = randomTeam;
-    });
-
-    intercontinentalKeys.forEach(key => {
-        const randomTeam = key.teams[Math.floor(Math.random() * key.teams.length)];
-        newQualifiers.intercontinentalKeys[key.id] = randomTeam;
-    });
+    const newQualifiers = currentQualifiers;
 
     // 2. Groups
     const newGroups: GroupsState = {
@@ -269,12 +255,12 @@ export const randomizeTournament = (): TournamentState => {
     // Reconstruct groups with teams
     const groupsWithTeams = initialGroups.map(group => {
         const resolvedTeams = group.teams.map(teamCode => {
-            if (teamCode === 'pathA') return newQualifiers.uefaPaths.pathA;
-            if (teamCode === 'pathB') return newQualifiers.uefaPaths.pathB;
-            if (teamCode === 'pathC') return newQualifiers.uefaPaths.pathC;
-            if (teamCode === 'pathD') return newQualifiers.uefaPaths.pathD;
-            if (teamCode === 'keyA') return newQualifiers.intercontinentalKeys.keyA;
-            if (teamCode === 'keyB') return newQualifiers.intercontinentalKeys.keyB;
+            if (teamCode === 'pathA') return newQualifiers?.uefaPaths?.pathA || 'BIH';
+            if (teamCode === 'pathB') return newQualifiers?.uefaPaths?.pathB || 'SWE';
+            if (teamCode === 'pathC') return newQualifiers?.uefaPaths?.pathC || 'TUR';
+            if (teamCode === 'pathD') return newQualifiers?.uefaPaths?.pathD || 'CZE';
+            if (teamCode === 'keyA') return newQualifiers?.intercontinentalKeys?.keyA || 'COD';
+            if (teamCode === 'keyB') return newQualifiers?.intercontinentalKeys?.keyB || 'IRQ';
             return teamCode;
         });
         
