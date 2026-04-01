@@ -27,7 +27,7 @@ export const InstructionsModal: React.FC<InstructionsModalProps> = ({ isOpen, on
     },
     {
       icon: <ListOrdered className="text-yellow-500" size={24} />,
-      title: "2. Tabla General",
+      title: "3. Tabla General",
       description: "Estadística general del torneo."
     }
   ];
