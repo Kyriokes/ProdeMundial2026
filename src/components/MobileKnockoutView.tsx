@@ -9,6 +9,7 @@ interface MobileKnockoutViewProps {
     roundOf16: KnockoutMatch[];
     quarterFinals: KnockoutMatch[];
     semiFinals: KnockoutMatch[];
+    thirdPlace: KnockoutMatch[];
     final: KnockoutMatch[];
   };
   onUpdate: (matchId: string, result: MatchResult & { winner?: string }) => void;
@@ -89,6 +90,20 @@ export const MobileKnockoutView: React.FC<MobileKnockoutViewProps> = ({ rounds, 
                 ) : (
                   <div className="text-center text-gray-400 dark:text-gray-500 italic text-sm">Por definir</div>
                 )}
+              </div>
+            </div>
+
+            {/* Third Place Section */}
+            <div className="w-full">
+              <h3 className="text-center font-bold text-amber-600 dark:text-amber-400 text-sm uppercase tracking-widest mb-4">Tercer Puesto</h3>
+              <div className="flex justify-center">
+                 {rounds.thirdPlace.length > 0 ? (
+                    <div className="transform shadow-lg rounded-lg">
+                      <KnockoutMatchCard match={rounds.thirdPlace[0]} onUpdate={(r) => onUpdate(rounds.thirdPlace[0].id, r)} />
+                    </div>
+                 ) : (
+                    <div className="text-center text-gray-400 dark:text-gray-500 italic text-sm">Por definir</div>
+                 )}
               </div>
             </div>
 

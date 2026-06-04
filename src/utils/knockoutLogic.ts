@@ -161,6 +161,11 @@ export function generateBracket(roundOf32Matches: KnockoutMatch[]): KnockoutMatc
     const fId = 'M104';
     if (sf1) { sf1.nextMatchId = fId; sf1.nextMatchSlot = 'home'; }
     if (sf2) { sf2.nextMatchId = fId; sf2.nextMatchSlot = 'away'; }
+
+    // Third Place Match
+    const tpId = 'M103';
+    if (sf1) { sf1.loserNextMatchId = tpId; sf1.loserNextMatchSlot = 'home'; }
+    if (sf2) { sf2.loserNextMatchId = tpId; sf2.loserNextMatchSlot = 'away'; }
     
     allMatches.push({
         id: fId,
@@ -169,10 +174,6 @@ export function generateBracket(roundOf32Matches: KnockoutMatch[]): KnockoutMatc
         awayTeam: null
     });
 
-    // Third Place Match
-    const tpId = 'M103';
-    // Logic for populating losers would go here during state updates, 
-    // but structure-wise we just define the match.
     allMatches.push({
         id: tpId,
         round: 'thirdPlace',

@@ -29,6 +29,7 @@ export const KnockoutPage: React.FC = () => {
       roundOf16: bracketData.filter(m => m.round === 'roundOf16'),
       quarterFinals: bracketData.filter(m => m.round === 'quarterFinals'),
       semiFinals: bracketData.filter(m => m.round === 'semiFinals'),
+      thirdPlace: bracketData.filter(m => m.round === 'thirdPlace'),
       final: bracketData.filter(m => m.round === 'final')
   };
 
@@ -48,6 +49,7 @@ export const KnockoutPage: React.FC = () => {
   };
 
   const finalMatch = rounds.final[0];
+  const thirdPlaceMatch = rounds.thirdPlace[0];
   const championCode = finalMatch?.winner;
   const champion = championCode ? countries[championCode] : null;
 
@@ -115,27 +117,38 @@ export const KnockoutPage: React.FC = () => {
                     <h3 className="font-black text-blue-900 dark:text-blue-400 text-xl uppercase tracking-widest border-b-2 border-blue-900/20 dark:border-blue-400/20 pb-1 transition-colors">Gran Final</h3>
                 </div>
                 
-                <div className="flex-1 flex flex-col justify-center items-center pb-20 relative z-10">
-                    {finalMatch && (
-                        <div className="transform scale-125 mb-12 shadow-2xl rounded-lg bg-white dark:bg-gray-800 relative z-20 ring-4 ring-gray-100 dark:ring-gray-700 transition-colors">
-                             <KnockoutMatchCard match={finalMatch} onUpdate={(r) => handleUpdate(finalMatch.id, r)} />
-                        </div>
-                    )}
-                    
-                    {champion ? (
-                        <div className="text-center animate-fade-in-up transform transition-all duration-500 hover:scale-110 cursor-default">
-                            <div className="text-5xl mb-4 drop-shadow-xl animate-bounce">🏆</div>
-                            <h2 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-2">Campeón del Mundo</h2>
-                            <div className="flex flex-col items-center bg-white/80 dark:bg-gray-800/80 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 transition-colors backdrop-blur-sm">
-                                 <div className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter leading-none whitespace-nowrap bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400">
-                                    {champion.name}
-                                 </div>
+                <div className="flex-1 flex flex-col items-center relative z-10 min-h-0 overflow-y-auto w-full no-scrollbar pb-4">
+                    <div className="w-full flex flex-col items-center my-auto py-4 flex-shrink-0">
+                        {finalMatch && (
+                            <div className="transform scale-125 mb-12 shadow-2xl rounded-lg bg-white dark:bg-gray-800 relative z-20 ring-4 ring-gray-100 dark:ring-gray-700 transition-colors">
+                                 <KnockoutMatchCard match={finalMatch} onUpdate={(r) => handleUpdate(finalMatch.id, r)} />
                             </div>
-                        </div>
-                    ) : (
-                        <div className="text-center opacity-40 grayscale dark:opacity-30">
-                            <div className="text-5xl mb-4">🏆</div>
-                            <h2 className="text-xl font-bold dark:text-gray-300 tracking-widest">POR DEFINIR</h2>
+                        )}
+
+                        {champion ? (
+                            <div className="mt-8 text-center animate-fade-in-up transform transition-all duration-500 hover:scale-110 cursor-default">
+                                <div className="text-5xl mb-4 drop-shadow-xl animate-bounce">🏆</div>
+                                <h2 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-2">Campeón del Mundo</h2>
+                                <div className="flex flex-col items-center bg-white/80 dark:bg-gray-800/80 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 transition-colors backdrop-blur-sm">
+                                     <div className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter leading-none whitespace-nowrap bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400">
+                                        {champion.name}
+                                     </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-center opacity-40 grayscale dark:opacity-30">
+                                <div className="text-5xl mb-4">🏆</div>
+                                <h2 className="text-xl font-bold dark:text-gray-300 tracking-widest">POR DEFINIR</h2>
+                            </div>
+                        )}
+                    </div>
+
+                    {thirdPlaceMatch && (
+                        <div className="flex-none pt-6 pb-10 flex flex-col items-center mt-auto flex-shrink-0">
+                            <h4 className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-[0.2em] mb-3 transition-colors">Tercer Puesto</h4>
+                            <div className="shadow-lg rounded-lg bg-white dark:bg-gray-800 ring-2 ring-amber-100 dark:ring-amber-900/40 transition-colors">
+                                <KnockoutMatchCard match={thirdPlaceMatch} onUpdate={(r) => handleUpdate(thirdPlaceMatch.id, r)} />
+                            </div>
                         </div>
                     )}
                 </div>

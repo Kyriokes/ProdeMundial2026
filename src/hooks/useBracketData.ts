@@ -73,6 +73,8 @@ export const useBracketData = () => {
                 }
             }
             
+            const loser = match.winner === match.homeTeam ? (match.awayTeam || undefined) : match.winner === match.awayTeam ? (match.homeTeam || undefined) : undefined;
+
             // Propagate to next match
             if (match.winner && match.nextMatchId) {
                 const nextMatch = matchMap.get(match.nextMatchId);
@@ -81,6 +83,18 @@ export const useBracketData = () => {
                         nextMatch.homeTeam = match.winner;
                     } else if (match.nextMatchSlot === 'away') {
                         nextMatch.awayTeam = match.winner;
+                    }
+                }
+            }
+
+            // Propagate loser to the third-place match when applicable
+            if (loser && match.loserNextMatchId) {
+                const loserNextMatch = matchMap.get(match.loserNextMatchId);
+                if (loserNextMatch) {
+                    if (match.loserNextMatchSlot === 'home') {
+                        loserNextMatch.homeTeam = loser;
+                    } else if (match.loserNextMatchSlot === 'away') {
+                        loserNextMatch.awayTeam = loser;
                     }
                 }
             }

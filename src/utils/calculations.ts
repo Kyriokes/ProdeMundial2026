@@ -5,6 +5,13 @@ export const POINTS_WIN = 3;
 export const POINTS_DRAW = 1;
 export const POINTS_LOSS = 0;
 
+type MiniStanding = {
+  points: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDifference: number;
+};
+
 export function generateGroupMatches(groupId: string, teams: string[]): Match[] {
   // Standard Round Robin for 4 teams (A, B, C, D)
   // Match 1: A vs B
@@ -115,56 +122,179 @@ export function calculateGroupStandings(group: Group, allMatches: Record<string,
 }
 
 function resolveTies(members: GroupMember[], groupMatches: Match[], allMatches: Record<string, MatchResult>): GroupMember[] {
-  return members.sort((a, b) => {
-    if (a.points !== b.points) return b.points - a.points;
+  const membersByCode = Object.fromEntries(
+    members.map(member => [member.countryCode, member])
+  ) as Record<string, GroupMember>;
 
-    // 2. Goal difference
-    if (a.goalDifference !== b.goalDifference) return b.goalDifference - a.goalDifference;
+  const sortedByPoints = [...members].sort((a, b) => b.points - a.points);
+  const resolved: GroupMember[] = [];
 
-    // 3. Goals for
-    if (a.goalsFor !== b.goalsFor) return b.goalsFor - a.goalsFor;
+  for (let i = 0; i < sortedByPoints.length;) {
+    const currentPoints = sortedByPoints[i].points;
+    const tiedGroup: GroupMember[] = [];
 
-    // 4. Head-to-head points
-    // Simplified version without mini-league
-    const match = groupMatches.find(m => 
-      (m.homeTeam === a.countryCode && m.awayTeam === b.countryCode) || 
-      (m.homeTeam === b.countryCode && m.awayTeam === a.countryCode)
-    );
-    
-    if (match) {
-        const result = allMatches[match.id];
-        if (result && result.homeGoals !== undefined && result.awayGoals !== undefined) {
-             let pointsA = 0;
-             let pointsB = 0;
-             let gdA = 0;
-             let gdB = 0;
-             
-             const aIsHome = match.homeTeam === a.countryCode;
-             const goalsA = aIsHome ? result.homeGoals : result.awayGoals;
-             const goalsB = aIsHome ? result.awayGoals : result.homeGoals;
-             
-             if (goalsA > goalsB) pointsA = 3;
-             else if (goalsB > goalsA) pointsB = 3;
-             else { pointsA = 1; pointsB = 1; }
-             
-             gdA = goalsA - goalsB;
-             gdB = goalsB - goalsA;
-             
-             if (pointsA !== pointsB) return pointsB - pointsA;
-             if (gdA !== gdB) return gdB - gdA;
-             if (goalsA !== goalsB) return goalsB - goalsA;
-        }
+    while (i < sortedByPoints.length && sortedByPoints[i].points === currentPoints) {
+      tiedGroup.push(sortedByPoints[i]);
+      i++;
     }
 
-    const countryA = countries[a.countryCode];
-    const countryB = countries[b.countryCode];
-    
-    // Safety check for missing country data
-    if (!countryA || !countryB) return 0;
+    if (tiedGroup.length === 1) {
+      resolved.push(tiedGroup[0]);
+      continue;
+    }
 
-    if (a.fairPlayPoints !== b.fairPlayPoints) return b.fairPlayPoints - a.fairPlayPoints;
-    return countryA.fifaRanking - countryB.fifaRanking;
+    const tiedCodes = tiedGroup.map(member => member.countryCode);
+    const headToHeadTiers = resolveHeadToHeadTiers(tiedCodes, groupMatches, allMatches);
+    const finalCodes = applyGlobalCriteria(headToHeadTiers, membersByCode);
+    resolved.push(...finalCodes.map(code => membersByCode[code]));
+  }
+
+  return resolved;
+}
+
+function resolveHeadToHeadTiers(
+  teamCodes: string[],
+  groupMatches: Match[],
+  allMatches: Record<string, MatchResult>
+): string[][] {
+  if (teamCodes.length <= 1) {
+    return [teamCodes];
+  }
+
+  const miniStandings = buildMiniStandings(teamCodes, groupMatches, allMatches);
+  const orderedCodes = [...teamCodes].sort((a, b) => {
+    const standingA = miniStandings[a];
+    const standingB = miniStandings[b];
+
+    if (standingA.points !== standingB.points) return standingB.points - standingA.points;
+    if (standingA.goalDifference !== standingB.goalDifference) return standingB.goalDifference - standingA.goalDifference;
+    if (standingA.goalsFor !== standingB.goalsFor) return standingB.goalsFor - standingA.goalsFor;
+    return a.localeCompare(b);
   });
+
+  const tiers = splitByEquality(orderedCodes, code => {
+    const standing = miniStandings[code];
+    return `${standing.points}|${standing.goalDifference}|${standing.goalsFor}`;
+  });
+
+  if (tiers.length === 1) {
+    return tiers;
+  }
+
+  return tiers.flatMap(tier => {
+    if (tier.length <= 1) return [tier];
+    return resolveHeadToHeadTiers(tier, groupMatches, allMatches);
+  });
+}
+
+function buildMiniStandings(
+  teamCodes: string[],
+  groupMatches: Match[],
+  allMatches: Record<string, MatchResult>
+): Record<string, MiniStanding> {
+  const codeSet = new Set(teamCodes);
+  const standings: Record<string, MiniStanding> = Object.fromEntries(
+    teamCodes.map(code => [code, { points: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0 }])
+  ) as Record<string, MiniStanding>;
+
+  groupMatches.forEach(match => {
+    if (!codeSet.has(match.homeTeam) || !codeSet.has(match.awayTeam)) return;
+
+    const result = allMatches[match.id];
+    if (!result || result.homeGoals === undefined || result.awayGoals === undefined) return;
+
+    const home = standings[match.homeTeam];
+    const away = standings[match.awayTeam];
+
+    home.goalsFor += result.homeGoals;
+    home.goalsAgainst += result.awayGoals;
+    home.goalDifference = home.goalsFor - home.goalsAgainst;
+
+    away.goalsFor += result.awayGoals;
+    away.goalsAgainst += result.homeGoals;
+    away.goalDifference = away.goalsFor - away.goalsAgainst;
+
+    if (result.homeGoals > result.awayGoals) {
+      home.points += POINTS_WIN;
+    } else if (result.homeGoals < result.awayGoals) {
+      away.points += POINTS_WIN;
+    } else {
+      home.points += POINTS_DRAW;
+      away.points += POINTS_DRAW;
+    }
+  });
+
+  return standings;
+}
+
+function applyGlobalCriteria(tiers: string[][], membersByCode: Record<string, GroupMember>): string[] {
+  const criteria: Array<{
+    value: (code: string) => number;
+    descending: boolean;
+  }> = [
+    {
+      value: code => membersByCode[code].goalDifference,
+      descending: true
+    },
+    {
+      value: code => membersByCode[code].goalsFor,
+      descending: true
+    },
+    {
+      value: code => membersByCode[code].fairPlayPoints,
+      descending: true
+    },
+    {
+      value: code => getFifaRanking(code),
+      descending: false
+    }
+  ];
+
+  let currentTiers = tiers;
+
+  criteria.forEach(({ value, descending }) => {
+    currentTiers = currentTiers.flatMap(tier => {
+      if (tier.length <= 1) return [tier];
+
+      const sortedTier = [...tier].sort((a, b) => {
+        const diff = value(a) - value(b);
+        if (diff === 0) return a.localeCompare(b);
+        return descending ? -diff : diff;
+      });
+
+      return splitByEquality(sortedTier, value);
+    });
+  });
+
+  return currentTiers.flatMap(tier => tier);
+}
+
+function splitByEquality<T>(items: T[], getKey: (item: T) => string | number): T[][] {
+  if (items.length === 0) return [];
+
+  const groups: T[][] = [];
+  let currentGroup: T[] = [items[0]];
+  let currentKey = getKey(items[0]);
+
+  for (let i = 1; i < items.length; i++) {
+    const key = getKey(items[i]);
+    if (key === currentKey) {
+      currentGroup.push(items[i]);
+      continue;
+    }
+
+    groups.push(currentGroup);
+    currentGroup = [items[i]];
+    currentKey = key;
+  }
+
+  groups.push(currentGroup);
+  return groups;
+}
+
+function getFifaRanking(countryCode: string): number {
+  const country = countries[countryCode];
+  return country ? country.fifaRanking : Number.MAX_SAFE_INTEGER;
 }
 
 export function compareThirdPlace(a: GroupMember, b: GroupMember): number {

@@ -54,7 +54,7 @@ export const KnockoutMatchCard: React.FC<KnockoutMatchCardProps> = ({ match, onU
     const winner = penaltyWinner === 'home' ? match.homeTeam : penaltyWinner === 'away' ? match.awayTeam : undefined;
     
     onUpdate({
-      ...match.result,
+      ...match.result!,
       isPenalty: !!penaltyWinner,
       penaltyWinner,
       winner

@@ -56,16 +56,6 @@ export const generateMatchResult = (homeTeamCode: string, awayTeamCode: string, 
     // Safety floor: Always keep at least 2% for miracles
     if (drawProb < 0.02) drawProb = 0.02;
 
-    const remainingProb = 1 - drawProb;
-    
-    // Re-normalize win probs for the non-draw portion
-    const normalizedHomeWin = probHomeWin; 
-    // Wait, if probHomeWin is 0.6 (60% to win), away is 0.4.
-    // If we insert draw:
-    // P(Draw) = 0.25
-    // P(Home) = 0.75 * probHomeWin
-    // P(Away) = 0.75 * (1 - probHomeWin)
-    
     if (rand < drawProb) {
         winner = 'draw'; // Explicit draw in 90 mins (leads to penalties in Knockout)
     } else {
@@ -243,6 +233,28 @@ export const generateMatchResult = (homeTeamCode: string, awayTeamCode: string, 
     };
 };
 
+function deriveKnockoutOutcome(
+    match: KnockoutMatch,
+    result: MatchResult & { winner?: string }
+): { winner?: string; loser?: string } {
+    let winner = result.winner;
+
+    if (!winner && result.homeGoals !== undefined && result.awayGoals !== undefined) {
+        if (result.homeGoals > result.awayGoals) winner = match.homeTeam || undefined;
+        else if (result.awayGoals > result.homeGoals) winner = match.awayTeam || undefined;
+        else if (result.isPenalty && result.penaltyWinner) {
+            winner = result.penaltyWinner === 'home' ? (match.homeTeam || undefined) : (match.awayTeam || undefined);
+        }
+    }
+
+    if (!winner) {
+        return { winner: undefined, loser: undefined };
+    }
+
+    const loser = winner === match.homeTeam ? (match.awayTeam || undefined) : (match.homeTeam || undefined);
+    return { winner, loser };
+}
+
 export const randomizeTournament = (currentQualifiers: any): TournamentState => {
     // 1. Qualifiers
     const newQualifiers = currentQualifiers;
@@ -295,7 +307,7 @@ export const randomizeTournament = (currentQualifiers: any): TournamentState => 
     fullBracket.forEach(m => matchMap.set(m.id, m));
 
     // Simulate rounds
-    const rounds = ['roundOf32', 'roundOf16', 'quarterFinals', 'semiFinals', 'final'];
+    const rounds = ['roundOf32', 'roundOf16', 'quarterFinals', 'semiFinals', 'thirdPlace', 'final'];
     
     rounds.forEach(round => {
         const matchesInRound = fullBracket.filter(m => m.round === round);
@@ -308,20 +320,23 @@ export const randomizeTournament = (currentQualifiers: any): TournamentState => 
                 // Store result
                 newKnockout.matches[match.id] = result;
 
-                // Determine winner for propagation
-                let winner = result.winner;
-                if (!winner) {
-                     // Fallback if generateMatchResult somehow didn't return a winner (shouldn't happen for knockout)
-                     if ((result.homeGoals ?? 0) > (result.awayGoals ?? 0)) winner = match.homeTeam;
-                     else winner = match.awayTeam;
-                }
+                const { winner, loser } = deriveKnockoutOutcome(match, result);
 
-                // Propagate
+                // Propagate winner
                 if (winner && match.nextMatchId) {
                     const nextMatch = matchMap.get(match.nextMatchId);
                     if (nextMatch) {
                          if (match.nextMatchSlot === 'home') nextMatch.homeTeam = winner;
                          if (match.nextMatchSlot === 'away') nextMatch.awayTeam = winner;
+                    }
+                }
+
+                // Propagate loser
+                if (loser && match.loserNextMatchId) {
+                    const loserNextMatch = matchMap.get(match.loserNextMatchId);
+                    if (loserNextMatch) {
+                        if (match.loserNextMatchSlot === 'home') loserNextMatch.homeTeam = loser;
+                        if (match.loserNextMatchSlot === 'away') loserNextMatch.awayTeam = loser;
                     }
                 }
             }

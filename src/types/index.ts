@@ -57,6 +57,8 @@ export interface KnockoutMatch {
   awayTeam: string | null; // country code or null if not yet determined
   nextMatchId?: string;
   nextMatchSlot?: 'home' | 'away';
+  loserNextMatchId?: string;
+  loserNextMatchSlot?: 'home' | 'away';
   result?: MatchResult;
   winner?: string; // country code
 }
