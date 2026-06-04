@@ -126,30 +126,51 @@ function resolveTies(members: GroupMember[], groupMatches: Match[], allMatches: 
     members.map(member => [member.countryCode, member])
   ) as Record<string, GroupMember>;
 
-  const sortedByPoints = [...members].sort((a, b) => b.points - a.points);
-  const resolved: GroupMember[] = [];
+  // Start with all members in a single tier, sorted by points already
+  const initialTiers = splitByEquality(members, m => m.points);
 
-  for (let i = 0; i < sortedByPoints.length;) {
-    const currentPoints = sortedByPoints[i].points;
-    const tiedGroup: GroupMember[] = [];
+  let currentTiers: string[][] = initialTiers.map(tier => tier.map(m => m.countryCode));
 
-    while (i < sortedByPoints.length && sortedByPoints[i].points === currentPoints) {
-      tiedGroup.push(sortedByPoints[i]);
-      i++;
-    }
+  // Step 1: Global Goal Difference
+  currentTiers = applyCriteria(currentTiers, membersByCode, m => m.goalDifference, true);
 
-    if (tiedGroup.length === 1) {
-      resolved.push(tiedGroup[0]);
-      continue;
-    }
+  // Step 2: Global Goals For
+  currentTiers = applyCriteria(currentTiers, membersByCode, m => m.goalsFor, true);
 
-    const tiedCodes = tiedGroup.map(member => member.countryCode);
-    const headToHeadTiers = resolveHeadToHeadTiers(tiedCodes, groupMatches, allMatches);
-    const finalCodes = applyGlobalCriteria(headToHeadTiers, membersByCode);
-    resolved.push(...finalCodes.map(code => membersByCode[code]));
-  }
+  // Step 3: Head-to-Head (Mini-league)
+  currentTiers = currentTiers.flatMap(tier => {
+    if (tier.length <= 1) return [tier];
+    return resolveHeadToHeadTiers(tier, groupMatches, allMatches);
+  });
 
-  return resolved;
+  // Step 4: Fair Play Points
+  currentTiers = applyCriteria(currentTiers, membersByCode, m => m.fairPlayPoints, true);
+
+  // Step 5: FIFA Ranking (Drawing of lots equivalent)
+  currentTiers = applyCriteria(currentTiers, membersByCode, m => getFifaRanking(m.countryCode), false);
+
+  return currentTiers.flat().map(code => membersByCode[code]);
+}
+
+function applyCriteria(
+  tiers: string[][], 
+  membersByCode: Record<string, GroupMember>, 
+  getValue: (member: GroupMember) => number, 
+  descending: boolean
+): string[][] {
+  return tiers.flatMap(tier => {
+    if (tier.length <= 1) return [tier];
+
+    const sortedTier = [...tier].sort((a, b) => {
+      const valA = getValue(membersByCode[a]);
+      const valB = getValue(membersByCode[b]);
+      const diff = valA - valB;
+      if (diff === 0) return 0;
+      return descending ? -diff : diff;
+    });
+
+    return splitByEquality(sortedTier, code => getValue(membersByCode[code]));
+  });
 }
 
 function resolveHeadToHeadTiers(
@@ -169,7 +190,7 @@ function resolveHeadToHeadTiers(
     if (standingA.points !== standingB.points) return standingB.points - standingA.points;
     if (standingA.goalDifference !== standingB.goalDifference) return standingB.goalDifference - standingA.goalDifference;
     if (standingA.goalsFor !== standingB.goalsFor) return standingB.goalsFor - standingA.goalsFor;
-    return a.localeCompare(b);
+    return 0; // Maintain order if still tied
   });
 
   const tiers = splitByEquality(orderedCodes, code => {
@@ -227,47 +248,7 @@ function buildMiniStandings(
   return standings;
 }
 
-function applyGlobalCriteria(tiers: string[][], membersByCode: Record<string, GroupMember>): string[] {
-  const criteria: Array<{
-    value: (code: string) => number;
-    descending: boolean;
-  }> = [
-    {
-      value: code => membersByCode[code].goalDifference,
-      descending: true
-    },
-    {
-      value: code => membersByCode[code].goalsFor,
-      descending: true
-    },
-    {
-      value: code => membersByCode[code].fairPlayPoints,
-      descending: true
-    },
-    {
-      value: code => getFifaRanking(code),
-      descending: false
-    }
-  ];
 
-  let currentTiers = tiers;
-
-  criteria.forEach(({ value, descending }) => {
-    currentTiers = currentTiers.flatMap(tier => {
-      if (tier.length <= 1) return [tier];
-
-      const sortedTier = [...tier].sort((a, b) => {
-        const diff = value(a) - value(b);
-        if (diff === 0) return a.localeCompare(b);
-        return descending ? -diff : diff;
-      });
-
-      return splitByEquality(sortedTier, value);
-    });
-  });
-
-  return currentTiers.flatMap(tier => tier);
-}
 
 function splitByEquality<T>(items: T[], getKey: (item: T) => string | number): T[][] {
   if (items.length === 0) return [];

@@ -3,7 +3,7 @@ import { Country } from '../types';
 export const countries: Record<string, Country> = {
   // Ruta A
   WAL: { code: 'WAL', name: 'Gales', flag: 'gb-wls', fifaRanking: 35, fairPlay: 0 },
-  BIH: { code: 'BIH', name: 'Bosnia y Herzegovina', flag: 'ba', fifaRanking: 71, fairPlay: 0 },
+  BIH: { code: 'BIH', name: 'Bosnia&Herzegovina', flag: 'ba', fifaRanking: 71, fairPlay: 0 },
   ITA: { code: 'ITA', name: 'Italia', flag: 'it', fifaRanking: 13, fairPlay: 0 },
   NIR: { code: 'NIR', name: 'Irlanda del Norte', flag: 'gb-nir', fifaRanking: 69, fairPlay: 0 },
 

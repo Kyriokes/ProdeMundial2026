@@ -46,6 +46,11 @@ export const GroupCard: React.FC<GroupCardProps> = ({ id, name, teams }) => {
               <th className="px-3 py-2 text-center w-8">#</th>
               <th className="px-3 py-2">Equipo</th>
               <th className="px-2 py-2 text-center" title="Partidos Jugados">PJ</th>
+              <th className="px-2 py-2 text-center hidden sm:table-cell" title="Partidos Ganados">PG</th>
+              <th className="px-2 py-2 text-center hidden sm:table-cell" title="Partidos Empatados">PE</th>
+              <th className="px-2 py-2 text-center hidden sm:table-cell" title="Partidos Perdidos">PP</th>
+              <th className="px-2 py-2 text-center hidden md:table-cell" title="Goles a Favor">GF</th>
+              <th className="px-2 py-2 text-center hidden md:table-cell" title="Goles en Contra">GC</th>
               <th className="px-2 py-2 text-center" title="Diferencia de Gol">DG</th>
               <th className="px-3 py-2 text-center font-bold">Pts</th>
             </tr>
@@ -71,6 +76,21 @@ export const GroupCard: React.FC<GroupCardProps> = ({ id, name, teams }) => {
                   </td>
                   <td className="px-2 py-2 text-center text-gray-600 dark:text-gray-400">
                     {member.wins + member.draws + member.losses}
+                  </td>
+                  <td className="px-2 py-2 text-center text-gray-600 dark:text-gray-400 hidden sm:table-cell">
+                    {member.wins}
+                  </td>
+                  <td className="px-2 py-2 text-center text-gray-600 dark:text-gray-400 hidden sm:table-cell">
+                    {member.draws}
+                  </td>
+                  <td className="px-2 py-2 text-center text-gray-600 dark:text-gray-400 hidden sm:table-cell">
+                    {member.losses}
+                  </td>
+                  <td className="px-2 py-2 text-center text-gray-600 dark:text-gray-400 hidden md:table-cell">
+                    {member.goalsFor}
+                  </td>
+                  <td className="px-2 py-2 text-center text-gray-600 dark:text-gray-400 hidden md:table-cell">
+                    {member.goalsAgainst}
                   </td>
                   <td className="px-2 py-2 text-center text-gray-600 dark:text-gray-400">
                     {member.goalDifference > 0 ? `+${member.goalDifference}` : member.goalDifference}
