@@ -1,178 +1,64 @@
 import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTournamentStore } from '../store/useTournamentStore';
-import { StateSerializer, RouteStateManager } from '../utils/serializer';
+import { defaultQualifiers } from '../data/qualifiers';
+import {
+  buildStatePath,
+  getCodesFromPathname,
+  getStageFromPathname,
+  getStateFromPathname,
+  hasTournamentData,
+  isValidStage,
+  safeDecode,
+} from '../utils/urlState';
 
+const samePath = (a: string, b: string) => safeDecode(a).replace(/\/$/, '') === safeDecode(b).replace(/\/$/, '');
+
+/**
+ * Keeps the URL and the tournament store in sync in both directions.
+ * - URL -> store: on mount and on history navigation (back/forward, pasted link).
+ * - store -> URL: on every state change, written with `replace` so it never piles up history.
+ */
 export const RouteSync: React.FC = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { qualifiers, groups, knockout, setFullState } = useTournamentStore();
-  const isFirstRun = useRef(true);
-  const lastPathname = useRef(pathname);
+  const lastWrittenPath = useRef<string | null>(null);
 
-  // 1. Initial Load: Parse URL -> Set State
+  // 1. URL -> store
   useEffect(() => {
-      const path = window.location.pathname;
-      // Format: /stage/codes
-      // codes can be code1&code2&code3
-      
-      const parts = path.split('/').filter(Boolean); // ["stats", "code1&code2"]
-      
-    const currentStage = parts[0] || 'groups'; // 'groups', 'knockout', 'stats'
+    if (lastWrittenPath.current !== null && samePath(lastWrittenPath.current, pathname)) return; // our own write
 
-    if (parts.length >= 2) {
-        const codesStr = parts.slice(1).join('/'); 
-        
-        // Decodificamos la URL por si el navegador o el usuario compartieron el link con los '&' convertidos a '%26'
-        const decodedCodesStr = decodeURIComponent(codesStr);
-        const codes = decodedCodesStr.split('&');
-        const state: Partial<any> = {};
+    const fromUrl = getStateFromPathname(pathname);
+    if (!fromUrl) return;
 
-        // Helper to try new format then old
-        const tryDeserialize = (code: string, type: 'qualifiers' | 'groups' | 'knockout') => {
-            if (!code) return null;
-            
-            if (type === 'qualifiers') {
-                const res = StateSerializer.deserializeQualifiers(code);
-                if (res) return res;
-                return StateSerializer.deserialize(code);
-            }
-            if (type === 'groups') {
-                const res = StateSerializer.deserializeGroups(code);
-                if (res) return res;
-                return StateSerializer.deserialize(code);
-            }
-            if (type === 'knockout') {
-                const res = StateSerializer.deserializeKnockout(code);
-                if (res) return res;
-                return StateSerializer.deserialize(code);
-            }
-            return null;
-        };
+    // A URL is a full snapshot: parts it does not carry are empty, not "keep whatever was there".
+    setFullState({
+      qualifiers: fromUrl.qualifiers ?? defaultQualifiers,
+      groups: fromUrl.groups ?? { matches: {} },
+      knockout: fromUrl.knockout ?? { matches: {} },
+    });
+  }, [pathname, setFullState]);
 
-        // Strict mapping based on the new stable URL format
-        if (codes[0]) state.qualifiers = tryDeserialize(codes[0], 'qualifiers');
-        if (codes[1]) state.groups = tryDeserialize(codes[1], 'groups');
-        if (codes[2]) state.knockout = tryDeserialize(codes[2], 'knockout');
-
-        // Por seguridad para retrocompatibilidad:
-        if (codes.length < 3) {
-           if (!state.knockout && codes[0]) {
-              const k = tryDeserialize(codes[0], 'knockout');
-              if (k && Object.keys(k.matches).length > 0) state.knockout = k;
-           }
-           if (!state.knockout && codes[1]) {
-              const k = tryDeserialize(codes[1], 'knockout');
-              if (k && Object.keys(k.matches).length > 0) state.knockout = k;
-           }
-        }
-
-        // Only update if we actually got something valid
-        if (state.qualifiers || state.groups || state.knockout) {
-           setFullState(state);
-        }
-    } else if (parts.length === 1 && parts[0] === 'stats') {
-          // If we are in /stats but without codes, try to load from localStorage or just wait?
-          // The issue is: if URL is just /stats, we don't have state in URL.
-          // But if we navigated there from inside the app, the state is in the store.
-          // The problem is if we Refresh on /stats.
-          // If we refresh on /stats, we have no codes. So state remains initial (empty).
-          // And then Sync State sees empty state and generates empty codes.
-          // This component assumes State is source of truth, and URL reflects it.
-          // But on initial load, URL is source of truth.
-          
-          // If URL has no codes, we should probably NOT overwrite the store if it's already populated?
-          // But on refresh, store is empty.
-          
-          // So: /stats without codes = Empty State.
-          // This is expected behavior for a stateless app.
-          // Unless we persist to localStorage?
-          // For now, let's assume if URL is empty, we start fresh.
-      }
-      
-      // Mark as not first run immediately
-      isFirstRun.current = false;
-  }, [setFullState]); // Only on mount
-
-  // 2. Sync State -> URL
+  // 2. store -> URL
   useEffect(() => {
-    // Skip the very first run to avoid overwriting URL with empty state before hydration
-    if (isFirstRun.current) return;
-
-    const qualifierCode = Object.keys(qualifiers.uefaPaths).length > 0 || Object.keys(qualifiers.intercontinentalKeys).length > 0
-      ? StateSerializer.serializeQualifiers(qualifiers) 
-      : '';
-      
-    const groupCode = Object.keys(groups.matches).length > 0 
-      ? StateSerializer.serializeGroups(groups) 
-      : '';
-      
-    const knockoutCode = Object.keys(knockout.matches).length > 0 
-      ? StateSerializer.serializeKnockout(knockout) 
-      : '';
-      
-    // Determine base path based on current stage or what's completed
+    // Read both sources directly: in the same commit as a hydration above the subscribed
+    // values are stale, and right after a handler calls navigate() the router's pathname
+    // still lags behind window.location (e.g. "randomize" sets state and jumps to /knockout).
     const currentPath = window.location.pathname;
-    const currentStage = currentPath.split('/')[1] || 'groups';
-    
-    // Check if the current stage is a valid one
-    const validStages = ['groups', 'knockout', 'stats'];
-    if (!validStages.includes(currentStage)) {
-        return; // Don't sync state to invalid URLs (let the 404 page handle it)
-    }
+    const stage = getStageFromPathname(currentPath);
+    if (!isValidStage(stage)) return; // "/" redirects on its own; anything else is the 404 page
 
-    // If we are in /stats, DO NOT redirect/sync URL automatically to avoid overwriting state or loops.
-    // The user might be viewing a specific snapshot or just navigating.
-    if (currentStage === 'stats') return;
+    const state = useTournamentStore.getState();
+    const urlHasCodes = getCodesFromPathname(currentPath).length > 0;
+    if (!hasTournamentData(state) && !urlHasCodes) return;
 
-    // Construct the full code path using & separator, maintaining positions
-    // Formato estricto: /stage/qualifierCode&groupCode&knockoutCode
-    // Si un código falta, dejamos el espacio vacío para que siempre se pueda hacer split('&') y queden en sus índices
-    let codePath = '';
-    
-    // Si no hay ningún código en absoluto, codePath queda vacío
-    if (qualifierCode || groupCode || knockoutCode) {
-       codePath = `/${qualifierCode}&${groupCode}&${knockoutCode}`;
-    }
-    
-    // If we have no codes, we are at root/qualifiers empty
-    if (!codePath) {
-      // If we are at /stats and have no codes, we might want to redirect to /qualifiers or stay?
-      // If we stay, we show empty table.
-      // If we redirect, we force user to start over.
-      // Let's allow empty /stats for now, or better yet, if we have state in store (which we do if codePath is generated from it),
-      // but codePath is empty?
-      // Wait, codePath is generated FROM state.
-      // If codePath is empty, it means state is empty.
-      
-      if (currentPath !== '/groups' && currentPath !== '/' && currentPath !== '/stats') {
-         // Don't redirect if just empty, unless we want to enforce structure
-      }
-      return;
-    }
+    const target = buildStatePath(stage, state);
+    if (samePath(target, currentPath)) return;
 
-    const newCodes = codePath.substring(1).split('&'); // remove leading /
-    const targetUrl = `/${currentStage}/${newCodes.join('&')}`;
-    
-    // Check if URL is actually different to avoid infinite loops
-    // Decode both to compare actual values if needed, but string comparison is usually fine
-    // Also handle trailing slashes or minor differences
-    const normalize = (p: string) => decodeURIComponent(p).replace(/\/$/, '');
-    
-    if (normalize(currentPath) !== normalize(targetUrl)) {
-       // Only navigate if the codes part is different OR if we are forcing a structure
-       // But wait, if we are in /stats, we might want to KEEP /stats
-       if (currentStage === 'stats') {
-           const statsUrl = `/stats/${newCodes.join('&')}`;
-           if (normalize(currentPath) !== normalize(statsUrl)) {
-                navigate(statsUrl, { replace: true });
-           }
-       } else {
-           navigate(targetUrl, { replace: true });
-       }
-    }
-    
-  }, [qualifiers, groups, knockout, navigate]);
+    lastWrittenPath.current = target;
+    navigate(target, { replace: true });
+  }, [qualifiers, groups, knockout, pathname, navigate]);
 
   return null;
 };

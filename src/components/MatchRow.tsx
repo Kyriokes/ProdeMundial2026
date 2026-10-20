@@ -3,6 +3,7 @@ import { Match, MatchResult } from '../types';
 import { countries } from '../data/countries';
 import { FlagIcon } from './FlagIcon';
 import { generateMatchResult } from '../utils/randomizer';
+import { parseGoalInput, MAX_GOALS } from '../utils/goalInput';
 
 interface MatchRowProps {
   match: Match;
@@ -25,23 +26,6 @@ const DICE_ICON = (
 
 const AnimatedDoubleYellow = () => (
     <div className="relative w-6 h-4 flex justify-center items-center">
-        <style>{`
-            @keyframes mergeLeft {
-                0%, 25% { transform: translateX(0); opacity: 1; }
-                50%, 90% { transform: translateX(6px); opacity: 0; }
-                100% { transform: translateX(0); opacity: 1; }
-            }
-            @keyframes mergeRight {
-                0%, 25% { transform: translateX(0); opacity: 1; }
-                50%, 90% { transform: translateX(-6px); opacity: 0; }
-                100% { transform: translateX(0); opacity: 1; }
-            }
-            @keyframes redAppear {
-                0%, 45% { transform: scale(0.5); opacity: 0; }
-                55%, 90% { transform: scale(1); opacity: 1; }
-                100% { transform: scale(0.5); opacity: 0; }
-            }
-        `}</style>
         <img 
             src={YELLOW_CARD_ICON} 
             className="w-3 h-3 absolute left-0" 
@@ -63,19 +47,43 @@ const AnimatedDoubleYellow = () => (
     </div>
 );
 
+const CardCounter = ({ 
+  count, 
+  onIncrement, 
+  onDecrement
+}: { 
+  count: number, 
+  onIncrement: () => void, 
+  onDecrement: () => void
+}) => (
+    <div className="flex flex-col items-center bg-white dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 overflow-hidden w-7">
+      <button 
+        onClick={onIncrement}
+        className="w-full h-5 flex items-center justify-center text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-xs"
+      >
+        +
+      </button>
+      <span className="w-full text-center text-xs font-medium dark:text-white border-y border-gray-100 dark:border-gray-600 py-0.5 bg-gray-50 dark:bg-gray-800/50">{count}</span>
+      <button 
+        onClick={onDecrement}
+        className="w-full h-5 flex items-center justify-center text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-xs"
+      >
+        -
+      </button>
+    </div>
+);
+
 export const MatchRow: React.FC<MatchRowProps> = ({ match, result, onUpdate }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const homeTeam = countries[match.homeTeam];
   const awayTeam = countries[match.awayTeam];
 
   const handleHomeGoalsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    onUpdate({ homeGoals: val === '' ? undefined : parseInt(val) });
+    onUpdate({ homeGoals: parseGoalInput(e.target.value) });
   };
 
   const handleAwayGoalsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    onUpdate({ awayGoals: val === '' ? undefined : parseInt(val) });
+    onUpdate({ awayGoals: parseGoalInput(e.target.value) });
   };
 
   const updateCards = (team: 'home' | 'away', type: 'Yellow' | 'DoubleYellow' | 'DirectRed', delta: number) => {
@@ -101,44 +109,14 @@ export const MatchRow: React.FC<MatchRowProps> = ({ match, result, onUpdate }) =
 
   if (!homeTeam || !awayTeam) return null;
 
-  const CardCounter = ({ 
-    count, 
-    onIncrement, 
-    onDecrement
-  }: { 
-    count: number, 
-    onIncrement: () => void, 
-    onDecrement: () => void
-  }) => (
-      <div className="flex flex-col items-center bg-white dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 overflow-hidden w-7">
-        <button 
-          onClick={onIncrement}
-          className="w-full h-5 flex items-center justify-center text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-xs"
-        >
-          +
-        </button>
-        <span className="w-full text-center text-xs font-medium dark:text-white border-y border-gray-100 dark:border-gray-600 py-0.5 bg-gray-50 dark:bg-gray-800/50">{count}</span>
-        <button 
-          onClick={onDecrement}
-          className="w-full h-5 flex items-center justify-center text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-xs"
-        >
-          -
-        </button>
-      </div>
-  );
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, field: 'home' | 'away') => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const form = e.currentTarget.form;
-      if (!form) {
-        // Fallback: try to find next input in the document
-        const inputs = Array.from(document.querySelectorAll('input[type="number"]:not([disabled])'));
-        const index = inputs.indexOf(e.currentTarget);
-        if (index > -1 && index < inputs.length - 1) {
-          (inputs[index + 1] as HTMLElement).focus();
-        }
-      }
+  // Enter moves the focus to the next score input on the page.
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="number"]:not([disabled])'));
+    const index = inputs.indexOf(e.currentTarget);
+    if (index > -1 && index < inputs.length - 1) {
+      inputs[index + 1].focus();
     }
   };
 
@@ -171,18 +149,20 @@ export const MatchRow: React.FC<MatchRowProps> = ({ match, result, onUpdate }) =
           <input
             type="number"
             min="0"
+            max={MAX_GOALS}
             value={result?.homeGoals ?? ''}
             onChange={handleHomeGoalsChange}
-            onKeyDown={(e) => handleKeyDown(e, 'home')}
+            onKeyDown={handleKeyDown}
             className="w-10 h-8 text-center border rounded-md focus:ring-1 focus:ring-blue-500 focus:outline-none no-spinner bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
           />
           <span className="text-gray-400 dark:text-gray-500">-</span>
           <input
             type="number"
             min="0"
+            max={MAX_GOALS}
             value={result?.awayGoals ?? ''}
             onChange={handleAwayGoalsChange}
-            onKeyDown={(e) => handleKeyDown(e, 'away')}
+            onKeyDown={handleKeyDown}
             className="w-10 h-8 text-center border rounded-md focus:ring-1 focus:ring-blue-500 focus:outline-none no-spinner bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
           />
         </div>
@@ -208,7 +188,7 @@ export const MatchRow: React.FC<MatchRowProps> = ({ match, result, onUpdate }) =
       </div>
 
       {isExpanded && (
-        <div className="bg-gray-50 dark:bg-gray-800/50 p-3 text-sm animate-in slide-in-from-top-2 duration-200 border-t border-gray-100 dark:border-gray-700">
+        <div className="bg-gray-50 dark:bg-gray-800/50 p-3 text-sm animate-slide-in-top border-t border-gray-100 dark:border-gray-700">
             {/* Split layout for Home and Away cards */}
             <div className="flex justify-center gap-4 sm:gap-8">
                 

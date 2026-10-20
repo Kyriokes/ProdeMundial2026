@@ -5,19 +5,23 @@ import { KnockoutPage } from './pages/KnockoutPage';
 import { StatsPage } from './pages/StatsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { RouteSync } from './components/RouteSync';
-import { Share2, Moon, Sun, Dices, Eraser, BarChart2, Trophy, Menu, X, CircleHelp } from 'lucide-react';
+import { Share2, Moon, Sun, Dices, Eraser, Trophy, Menu, X, CircleHelp } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 import { BallIcon } from './components/BallIcon';
 import { KofiButton } from './components/KofiButton';
 import { useTournamentStore } from './store/useTournamentStore';
 import { randomizeTournament } from './utils/randomizer';
 import { InstructionsModal } from './components/InstructionsModal';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { useTheme } from './hooks/useTheme';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const currentStage = pathname.split('/')[1];
-  const { setFullState, qualifiers, groups, knockout } = useTournamentStore();
+  const { setFullState, reset, qualifiers } = useTournamentStore();
+  // Results produced by the last "randomize all"; while they are untouched there is nothing manual to lose.
+  const lastRandomRef = React.useRef<{ groups: unknown; knockout: unknown } | null>(null);
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
 
   const [showInstructions, setShowInstructions] = React.useState(false);
@@ -25,7 +29,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   React.useEffect(() => {
     const hasSeen = localStorage.getItem('hasSeenInstructions');
     
-    // Check if store is empty
+    // Check if store is empty (read directly: this effect only runs on mount)
+    const { groups, knockout } = useTournamentStore.getState();
     const isStoreEmpty = Object.keys(groups.matches).length === 0 &&
                          Object.keys(knockout.matches).length === 0;
 
@@ -41,32 +46,38 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     }
   }, []);
 
-  const [isDark, setIsDark] = React.useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('theme') === 'dark' || 
-        (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const { isDark, toggleTheme } = useTheme();
+
+  const handleShare = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success('Enlace copiado al portapapeles!');
+    } catch {
+      toast.error('No se pudo copiar el enlace. Copialo desde la barra de direcciones.');
     }
-    return false;
-  });
+  };
 
-  React.useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [isDark]);
-
-  const toggleTheme = () => setIsDark(!isDark);
-
-  const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href);
-    toast.success('Enlace copiado al portapapeles!');
+  const applyRandomize = () => {
+    setFullState(randomizeTournament(qualifiers));
+    const { groups, knockout } = useTournamentStore.getState();
+    lastRandomRef.current = { groups, knockout };
+    navigate('/knockout');
+    toast.success('¡Torneo randomizado!', { duration: 1500 });
   };
 
   const handleRandomize = () => {
+    // Re-roll straight away when there is nothing manual to lose: an empty tournament,
+    // or one whose results are exactly the ones the last randomization produced.
+    const { groups, knockout } = useTournamentStore.getState();
+    const isEmpty = Object.keys(groups.matches).length === 0 && Object.keys(knockout.matches).length === 0;
+    const untouchedSinceLastRandom = lastRandomRef.current !== null
+      && lastRandomRef.current.groups === groups
+      && lastRandomRef.current.knockout === knockout;
+    if (isEmpty || untouchedSinceLastRandom) {
+      applyRandomize();
+      return;
+    }
+
     toast.custom((t) => (
       <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 max-w-sm w-full">
         <div className="flex items-start gap-4">
@@ -90,10 +101,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               <button
                 onClick={() => {
                   toast.dismiss(t);
-                  const newState = randomizeTournament(qualifiers);
-                  setFullState(newState);
-                  navigate('/knockout');
-                  toast.success('¡Torneo randomizado con éxito!');
+                  applyRandomize();
                 }}
                 className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors shadow-sm"
               >
@@ -132,8 +140,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               <button
                 onClick={() => {
                   toast.dismiss(t);
-                  // Reload the page to clear the state and start fresh
-                  window.location.href = '/';
+                  reset();
+                  lastRandomRef.current = null;
+                  navigate('/groups');
                   toast.success('¡Torneo reiniciado!');
                 }}
                 className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors shadow-sm"
@@ -303,19 +312,21 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 function App() {
   return (
+    <ErrorBoundary>
     <BrowserRouter>
       <RouteSync />
-      <Toaster richColors position="top-center" visibleToasts={1} />
+      <Toaster richColors position="bottom-right" visibleToasts={1} />
       <Layout>
         <Routes>
           <Route path="/" element={<Navigate to="/groups" replace />} />
           <Route path="/groups/*" element={<GroupsPage />} />
           <Route path="/knockout/*" element={<KnockoutPage />} />
-          <Route path="/stats" element={<StatsPage />} />
+          <Route path="/stats/*" element={<StatsPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Layout>
     </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 

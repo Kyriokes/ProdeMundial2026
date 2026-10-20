@@ -1,10 +1,9 @@
 import React, { useMemo } from 'react';
 import { useTournamentStore } from '../store/useTournamentStore';
-import { initialGroups } from '../data/groups';
 import { countries } from '../data/countries';
 import { useBracketData } from '../hooks/useBracketData';
 import { FlagIcon } from '../components/FlagIcon';
-import { generateGroupMatches } from '../utils/calculations';
+import { buildGroupsWithTeams } from '../utils/groupResolution';
 
 interface TeamStats {
   code: string;
@@ -36,117 +35,62 @@ export const StatsPage: React.FC = () => {
   const { qualifiers, groups: groupState } = useTournamentStore();
   const bracketData = useBracketData();
 
-  if (!qualifiers || !groupState) {
-      console.error('Missing qualifiers or groupState in StatsPage');
-      return (
-          <div className="p-8 text-center text-red-500">Error: No se pudo cargar la información del torneo.</div>
-      );
-  }
-
   const stats = useMemo(() => {
-    // 1. Initialize stats for ALL valid teams found in initialGroups
     const teamStats: Record<string, TeamStats> = {};
+    const groupsWithTeams = buildGroupsWithTeams(qualifiers);
 
-    initialGroups.forEach(group => {
-      group.teams.forEach(teamCode => {
-        let resolvedCode = teamCode;
-        // Try to resolve placeholders if possible, otherwise keep as is (to be safe)
-        if (qualifiers?.uefaPaths && qualifiers?.intercontinentalKeys) {
-            if (teamCode === 'pathA') resolvedCode = qualifiers.uefaPaths.pathA || 'BIH';
-            else if (teamCode === 'pathB') resolvedCode = qualifiers.uefaPaths.pathB || 'SWE';
-            else if (teamCode === 'pathC') resolvedCode = qualifiers.uefaPaths.pathC || 'TUR';
-            else if (teamCode === 'pathD') resolvedCode = qualifiers.uefaPaths.pathD || 'CZE';
-            else if (teamCode === 'keyA') resolvedCode = qualifiers.intercontinentalKeys.keyA || 'COD';
-            else if (teamCode === 'keyB') resolvedCode = qualifiers.intercontinentalKeys.keyB || 'IRQ';
-        } else {
-            if (teamCode === 'pathA') resolvedCode = 'BIH';
-            else if (teamCode === 'pathB') resolvedCode = 'SWE';
-            else if (teamCode === 'pathC') resolvedCode = 'TUR';
-            else if (teamCode === 'pathD') resolvedCode = 'CZE';
-            else if (teamCode === 'keyA') resolvedCode = 'COD';
-            else if (teamCode === 'keyB') resolvedCode = 'IRQ';
-        }
-
-        // Only add if we have a valid country code (not undefined, not empty)
-        if (resolvedCode && countries[resolvedCode]) {
-            teamStats[resolvedCode] = {
-                code: resolvedCode,
-                name: countries[resolvedCode].name,
-                group: group.id,
-                pj: 0,
-                pg: 0,
-                pe: 0,
-                pp: 0,
-                gf: 0,
-                gc: 0,
-                dg: 0,
-                pts: 0,
-                stageReached: STAGE_VALUES.GROUP_STAGE,
-                stageName: 'Fase de Grupos'
-            };
-        }
+    // 1. Initialize stats for every team that resolves to a known country
+    groupsWithTeams.forEach(group => {
+      group.teams.forEach(code => {
+        if (!countries[code]) return;
+        teamStats[code] = {
+          code,
+          name: countries[code].name,
+          group: group.id,
+          pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, dg: 0, pts: 0,
+          stageReached: STAGE_VALUES.GROUP_STAGE,
+          stageName: 'Fase de Grupos'
+        };
       });
     });
 
-    // If we have no teams, return empty array
     if (Object.keys(teamStats).length === 0) return [];
 
     // 2. Process Group Matches
-    // Use try-catch to prevent crash on data error
-    try {
-        initialGroups.forEach(group => {
-            const resolvedTeams = group.teams.map(teamCode => {
-                if (teamCode === 'pathA') return qualifiers?.uefaPaths?.pathA || 'BIH';
-                if (teamCode === 'pathB') return qualifiers?.uefaPaths?.pathB || 'SWE';
-                if (teamCode === 'pathC') return qualifiers?.uefaPaths?.pathC || 'TUR';
-                if (teamCode === 'pathD') return qualifiers?.uefaPaths?.pathD || 'CZE';
-                if (teamCode === 'keyA') return qualifiers?.intercontinentalKeys?.keyA || 'COD';
-                if (teamCode === 'keyB') return qualifiers?.intercontinentalKeys?.keyB || 'IRQ';
-                return teamCode;
-            });
+    groupsWithTeams.forEach(group => {
+      group.matches.forEach(match => {
+        const result = groupState.matches[match.id];
+        if (!result || result.homeGoals === undefined || result.awayGoals === undefined) return;
 
-            // Only process matches if we have 4 valid teams
-            if (resolvedTeams.some(t => !t)) return;
+        const home = teamStats[match.homeTeam];
+        const away = teamStats[match.awayTeam];
+        if (!home || !away) return;
 
-            const matches = generateGroupMatches(group.id, resolvedTeams as string[]);
-            
-            matches.forEach(match => {
-                const result = groupState.matches[match.id];
-                if (result && result.homeGoals !== undefined && result.awayGoals !== undefined) {
-                    const home = teamStats[match.homeTeam];
-                    const away = teamStats[match.awayTeam];
-                    
-                    if (home && away) {
-                        home.pj++;
-                        away.pj++;
-                        home.gf += result.homeGoals;
-                        away.gf += result.awayGoals;
-                        home.gc += result.awayGoals;
-                        away.gc += result.homeGoals;
-                        home.dg = home.gf - home.gc;
-                        away.dg = away.gf - away.gc;
+        home.pj++;
+        away.pj++;
+        home.gf += result.homeGoals;
+        away.gf += result.awayGoals;
+        home.gc += result.awayGoals;
+        away.gc += result.homeGoals;
+        home.dg = home.gf - home.gc;
+        away.dg = away.gf - away.gc;
 
-                        if (result.homeGoals > result.awayGoals) {
-                            home.pg++;
-                            home.pts += 3;
-                            away.pp++;
-                        } else if (result.awayGoals > result.homeGoals) {
-                            away.pg++;
-                            away.pts += 3;
-                            home.pp++;
-                        } else {
-                            home.pe++;
-                            home.pts += 1;
-                            away.pe++;
-                            away.pts += 1;
-                        }
-                    }
-                }
-            });
-        });
-    } catch (e) {
-        console.error('Error calculating group stats:', e);
-    }
+        if (result.homeGoals > result.awayGoals) {
+          home.pg++;
+          home.pts += 3;
+          away.pp++;
+        } else if (result.awayGoals > result.homeGoals) {
+          away.pg++;
+          away.pts += 3;
+          home.pp++;
+        } else {
+          home.pe++;
+          home.pts += 1;
+          away.pe++;
+          away.pts += 1;
+        }
+      });
+    });
 
     // 3. Process Knockout Matches
     // Use bracketData only if available
@@ -231,9 +175,7 @@ export const StatsPage: React.FC = () => {
       <div className="container mx-auto px-4 py-8 text-center">
         <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">Tabla General</h1>
         <p className="text-gray-600 dark:text-gray-400">
-            No hay datos disponibles. 
-            (Equipos inicializados: {Object.keys(countries).length}, 
-            Grupos: {initialGroups.length})
+            No hay datos disponibles.
         </p>
       </div>
     );

@@ -1,38 +1,49 @@
 import LZString from 'lz-string';
-import { TournamentState, QualifiersState, GroupsState, KnockoutState, MatchResult } from '../types';
+import { QualifiersState, GroupsState, KnockoutState, MatchResult, QualifierOption } from '../types';
+import { uefaPaths, intercontinentalKeys } from '../data/qualifiers';
+import { countries } from '../data/countries';
+import { isValidGoals } from './goalInput';
+
+const GROUP_IDS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+const MATCHES_PER_GROUP = 6;
+const FIRST_KNOCKOUT_MATCH = 73;
+const LAST_KNOCKOUT_MATCH = 104;
+
+/** Parses a non-negative integer written in the URL; anything else is NaN. */
+function parseStoredInt(value: string | undefined): number {
+  return value !== undefined && /^\d+$/.test(value) ? Number(value) : NaN;
+}
+
+function parseStoredGoals(value: string | undefined): number | null {
+  const goals = parseStoredInt(value);
+  return isValidGoals(goals) ? goals : null;
+}
+
+/** Keeps the code only when it is one of the teams that can actually win that play-off slot. */
+function allowedTeam(options: QualifierOption[], slotId: string, code: string | undefined): string {
+  if (!code) return '';
+  const option = options.find(o => o.id === slotId);
+  return option && option.teams.includes(code) ? code : '';
+}
+
+function trimTrailingEmpty(entries: string[]): string {
+  let raw = entries.join(';');
+  while (raw.endsWith(';_')) {
+    raw = raw.substring(0, raw.length - 2);
+  }
+  return raw === '_' ? '' : raw;
+}
 
 export class StateSerializer {
-  static serialize(state: any): string {
-    const jsonString = JSON.stringify(state);
-    return LZString.compressToEncodedURIComponent(jsonString);
-  }
-
-  static deserialize(compressed: string): any {
-    try {
-      const jsonString = LZString.decompressFromEncodedURIComponent(compressed);
-      if (!jsonString) return null;
-      return JSON.parse(jsonString);
-    } catch (e) {
-      console.error('Failed to deserialize state:', e);
-      return null;
-    }
-  }
-
-  // --- Qualifiers Serialization ---
+  // --- Qualifiers ---
   // Format: PathA,PathB,PathC,PathD,KeyA,KeyB
   static serializeQualifiers(qualifiers: QualifiersState): string {
-    const paths = ['pathA', 'pathB', 'pathC', 'pathD'];
-    const keys = ['keyA', 'keyB'];
-    
-    const values: string[] = [];
-    paths.forEach(p => values.push(qualifiers.uefaPaths[p] || ''));
-    keys.forEach(k => values.push(qualifiers.intercontinentalKeys[k] || ''));
-    
-    // Check if empty
+    const values = [
+      ...uefaPaths.map(path => qualifiers.uefaPaths[path.id] || ''),
+      ...intercontinentalKeys.map(key => qualifiers.intercontinentalKeys[key.id] || ''),
+    ];
     if (values.every(v => v === '')) return '';
-
-    const raw = values.join(',');
-    return LZString.compressToEncodedURIComponent(raw);
+    return LZString.compressToEncodedURIComponent(values.join(','));
   }
 
   static deserializeQualifiers(compressed: string): QualifiersState | null {
@@ -40,71 +51,56 @@ export class StateSerializer {
     try {
       const raw = LZString.decompressFromEncodedURIComponent(compressed);
       if (!raw) return null;
-      
+
       const values = raw.split(',');
-      // We expect 6 values, but handle shorter if user modified URL manually
-      
-      return {
-        uefaPaths: {
-          pathA: values[0] || '',
-          pathB: values[1] || '',
-          pathC: values[2] || '',
-          pathD: values[3] || '',
-        },
-        intercontinentalKeys: {
-          keyA: values[4] || '',
-          keyB: values[5] || '',
-        }
-      };
+      const result: QualifiersState = { uefaPaths: {}, intercontinentalKeys: {} };
+      uefaPaths.forEach((path, i) => {
+        result.uefaPaths[path.id] = allowedTeam(uefaPaths, path.id, values[i]);
+      });
+      intercontinentalKeys.forEach((key, i) => {
+        result.intercontinentalKeys[key.id] = allowedTeam(intercontinentalKeys, key.id, values[uefaPaths.length + i]);
+      });
+
+      const hasAny = [...Object.values(result.uefaPaths), ...Object.values(result.intercontinentalKeys)].some(Boolean);
+      return hasAny ? result : null;
     } catch (e) {
-      console.error('Failed to deserialize qualifiers:', e);
+      console.warn('Ignoring malformed qualifiers:', e);
       return null;
     }
   }
 
-  // --- Groups Serialization ---
+  // --- Groups ---
   // Order: A1..A6, B1..B6, ... L1..L6 (12 groups * 6 matches = 72 matches)
   // Format per match: HG:AG[:HY.HDY.HDR.AY.ADY.ADR] or _ if not played
-  // Separator: ;
   static serializeGroups(groups: GroupsState): string {
-    const groupIds = ['A','B','C','D','E','F','G','H','I','J','K','L'];
-    const matchResults: string[] = [];
+    const entries: string[] = [];
 
-    groupIds.forEach(groupId => {
-      for (let i = 1; i <= 6; i++) {
-        const matchId = `${groupId}-${i}`;
-        const result = groups.matches[matchId];
-        
+    GROUP_IDS.forEach(groupId => {
+      for (let i = 1; i <= MATCHES_PER_GROUP; i++) {
+        const result = groups.matches[`${groupId}-${i}`];
         if (!result || result.homeGoals === undefined || result.awayGoals === undefined) {
-          matchResults.push('_');
-        } else {
-          // Check for cards
-          const hasCards = (result.homeYellow || 0) > 0 || 
-                           (result.homeDoubleYellow || 0) > 0 || 
-                           (result.homeDirectRed || 0) > 0 ||
-                           (result.awayYellow || 0) > 0 || 
-                           (result.awayDoubleYellow || 0) > 0 || 
-                           (result.awayDirectRed || 0) > 0;
-                           
-          let matchStr = `${result.homeGoals}:${result.awayGoals}`;
-          
-          if (hasCards) {
-            matchStr += `:${result.homeYellow||0}.${result.homeDoubleYellow||0}.${result.homeDirectRed||0}.${result.awayYellow||0}.${result.awayDoubleYellow||0}.${result.awayDirectRed||0}`;
-          }
-          
-          matchResults.push(matchStr);
+          entries.push('_');
+          continue;
         }
+
+        const cards = [
+          result.homeYellow || 0,
+          result.homeDoubleYellow || 0,
+          result.homeDirectRed || 0,
+          result.awayYellow || 0,
+          result.awayDoubleYellow || 0,
+          result.awayDirectRed || 0,
+        ];
+        let entry = `${result.homeGoals}:${result.awayGoals}`;
+        if (cards.some(c => c > 0)) {
+          entry += `:${cards.join('.')}`;
+        }
+        entries.push(entry);
       }
     });
 
-    // Trim trailing underscores to save space
-    let raw = matchResults.join(';');
-    while (raw.endsWith(';_')) {
-      raw = raw.substring(0, raw.length - 2);
-    }
-    if (raw === '_') return '';
-
-    return LZString.compressToEncodedURIComponent(raw);
+    const raw = trimTrailingEmpty(entries);
+    return raw ? LZString.compressToEncodedURIComponent(raw) : '';
   }
 
   static deserializeGroups(compressed: string): GroupsState | null {
@@ -112,87 +108,68 @@ export class StateSerializer {
     try {
       const raw = LZString.decompressFromEncodedURIComponent(compressed);
       if (!raw) return null;
-      
-      const matchStrs = raw.split(';');
+
+      const entries = raw.split(';');
       const matches: Record<string, MatchResult> = {};
-      const groupIds = ['A','B','C','D','E','F','G','H','I','J','K','L'];
-      
-      let matchIdx = 0;
-      for (const groupId of groupIds) {
-        for (let i = 1; i <= 6; i++) {
-          if (matchIdx >= matchStrs.length) break;
-          
-          const str = matchStrs[matchIdx];
-          matchIdx++;
-          
-          if (str === '_' || str === '') continue;
-          
-          const parts = str.split(':');
-          const homeGoals = parseInt(parts[0]);
-          const awayGoals = parseInt(parts[1]);
-          
-          if (isNaN(homeGoals) || isNaN(awayGoals)) continue;
-          
+
+      let idx = 0;
+      for (const groupId of GROUP_IDS) {
+        for (let i = 1; i <= MATCHES_PER_GROUP; i++) {
+          if (idx >= entries.length) break;
+          const entry = entries[idx++];
+          if (entry === '_' || entry === '') continue;
+
+          const parts = entry.split(':');
+          const homeGoals = parseStoredGoals(parts[0]);
+          const awayGoals = parseStoredGoals(parts[1]);
+          if (homeGoals === null || awayGoals === null) continue;
+
           const result: MatchResult = { homeGoals, awayGoals };
-          
-          // Cards
+
           if (parts[2]) {
-            const cardParts = parts[2].split('.').map(Number);
-            if (cardParts.length === 6) {
-              result.homeYellow = cardParts[0];
-              result.homeDoubleYellow = cardParts[1];
-              result.homeDirectRed = cardParts[2];
-              result.awayYellow = cardParts[3];
-              result.awayDoubleYellow = cardParts[4];
-              result.awayDirectRed = cardParts[5];
+            const cards = parts[2].split('.').map(parseStoredInt);
+            if (cards.length === 6 && cards.every(Number.isInteger)) {
+              [result.homeYellow, result.homeDoubleYellow, result.homeDirectRed,
+               result.awayYellow, result.awayDoubleYellow, result.awayDirectRed] = cards;
             }
           }
-          
+
           matches[`${groupId}-${i}`] = result;
         }
       }
-      
-      return { matches };
+
+      return Object.keys(matches).length > 0 ? { matches } : null;
     } catch (e) {
-       console.error('Failed to deserialize groups:', e);
-       return null;
+      console.warn('Ignoring malformed groups:', e);
+      return null;
     }
   }
 
-  // --- Knockout Serialization ---
-  // IDs: M73 to M104 (32 matches total)
+  // --- Knockout ---
+  // IDs: M73 to M104 (32 matches). Format: HG:AG[:pH|pV][:WINNER]
   static serializeKnockout(knockout: KnockoutState): string {
-    const results: string[] = [];
-    
-    for (let i = 73; i <= 104; i++) {
-      const matchId = `M${i}`;
-      const result = knockout.matches[matchId];
-      
-      if (!result || result.homeGoals === undefined || result.awayGoals === undefined) {
-        results.push('_');
-      } else {
-        let str = `${result.homeGoals}:${result.awayGoals}`;
-        if (result.isPenalty && result.penaltyWinner) {
-          str += `:${result.penaltyWinner === 'home' ? 'pH' : 'pV'}`;
-        }
-        
-        // Ahora guardamos explícitamente el winner code si existe
-        if (result.winner) {
-          str += `:${result.winner}`;
-        }
-        
-        results.push(str);
-      }
-    }
-    
-    // Trim trailing underscores
-    let raw = results.join(';');
-    while (raw.endsWith(';_')) {
-      raw = raw.substring(0, raw.length - 2);
-    }
-    if (raw === '_') return '';
+    const entries: string[] = [];
 
-    return LZString.compressToEncodedURIComponent(raw);
+    for (let i = FIRST_KNOCKOUT_MATCH; i <= LAST_KNOCKOUT_MATCH; i++) {
+      const result = knockout.matches[`M${i}`];
+      if (!result || result.homeGoals === undefined || result.awayGoals === undefined) {
+        entries.push('_');
+        continue;
+      }
+
+      let entry = `${result.homeGoals}:${result.awayGoals}`;
+      const isDraw = result.homeGoals === result.awayGoals;
+      if (isDraw && result.isPenalty && result.penaltyWinner) {
+        entry += `:${result.penaltyWinner === 'home' ? 'pH' : 'pV'}`;
+      }
+      if (result.winner) {
+        entry += `:${result.winner}`;
+      }
+      entries.push(entry);
+    }
+
+    const raw = trimTrailingEmpty(entries);
+    return raw ? LZString.compressToEncodedURIComponent(raw) : '';
   }
 
   static deserializeKnockout(compressed: string): KnockoutState | null {
@@ -200,105 +177,44 @@ export class StateSerializer {
     try {
       const raw = LZString.decompressFromEncodedURIComponent(compressed);
       if (!raw) return null;
-      
-      const parts = raw.split(';');
-      const matches: Record<string, MatchResult & { winner?: string }> = {};
-      
-      let idx = 0;
-      for (let i = 73; i <= 104; i++) {
-         if (idx >= parts.length) break;
-         const str = parts[idx];
-         idx++;
-         
-         if (str === '_' || str === '') continue;
-         
-         const matchId = `M${i}`;
-         
-         const p = str.split(':');
-         const homeGoals = parseInt(p[0]);
-         const awayGoals = parseInt(p[1]);
-         
-         if (isNaN(homeGoals) || isNaN(awayGoals)) continue;
-         
-         const result: MatchResult & { winner?: string } = { homeGoals, awayGoals };
-         
-         // Extract penalty or winner info from remaining parts
-         let winnerPartIndex = 2;
 
-         if (p[2] === 'pH' || p[2] === 'pV') {
-           result.isPenalty = true;
-           result.penaltyWinner = p[2] === 'pH' ? 'home' : 'away';
-           winnerPartIndex = 3;
-         }
-         
-         if (p[winnerPartIndex]) {
-           result.winner = p[winnerPartIndex];
-         }
-         
-         matches[matchId] = result;
+      const entries = raw.split(';');
+      const matches: Record<string, MatchResult & { winner?: string }> = {};
+
+      let idx = 0;
+      for (let i = FIRST_KNOCKOUT_MATCH; i <= LAST_KNOCKOUT_MATCH; i++) {
+        if (idx >= entries.length) break;
+        const entry = entries[idx++];
+        if (entry === '_' || entry === '') continue;
+
+        const parts = entry.split(':');
+        const homeGoals = parseStoredGoals(parts[0]);
+        const awayGoals = parseStoredGoals(parts[1]);
+        if (homeGoals === null || awayGoals === null) continue;
+
+        const result: MatchResult & { winner?: string } = { homeGoals, awayGoals };
+
+        let winnerIndex = 2;
+        if (parts[2] === 'pH' || parts[2] === 'pV') {
+          if (homeGoals === awayGoals) {
+            result.isPenalty = true;
+            result.penaltyWinner = parts[2] === 'pH' ? 'home' : 'away';
+          }
+          winnerIndex = 3;
+        }
+
+        const winner = parts[winnerIndex];
+        if (winner && countries[winner]) {
+          result.winner = winner;
+        }
+
+        matches[`M${i}`] = result;
       }
-      
-      return { matches };
+
+      return Object.keys(matches).length > 0 ? { matches } : null;
     } catch (e) {
-      console.error('Failed to deserialize knockout:', e);
+      console.warn('Ignoring malformed knockout:', e);
       return null;
     }
-  }
-}
-
-export class RouteStateManager {
-  static buildUrl(basePath: string, ...codes: string[]): string {
-    const validCodes = codes.filter(c => c && c.length > 0);
-    if (validCodes.length === 0) return `/${basePath}`;
-    return `/${basePath}/${validCodes.join('&')}`;
-  }
-
-  static parseUrl(pathname: string): { stage: string; codes: string[] } {
-    const parts = pathname.split('/').filter(Boolean);
-    const stage = parts[0] || 'qualifiers';
-    const codes = parts[1]?.split('&') || [];
-    return { stage, codes };
-  }
-
-  static getStateFromUrl(url: string): Partial<TournamentState> {
-    const { codes } = this.parseUrl(url);
-    const state: Partial<TournamentState> = {};
-
-    if (codes[0]) {
-      const q = StateSerializer.deserializeQualifiers(codes[0]);
-      if (q) state.qualifiers = q;
-      else {
-         const k = StateSerializer.deserializeKnockout(codes[0]);
-         if (k && Object.keys(k.matches).length > 0) state.knockout = k;
-         else {
-            const old = StateSerializer.deserialize(codes[0]);
-            if (old) state.qualifiers = old;
-         }
-      }
-    }
-    
-    if (codes[1]) {
-      const g = StateSerializer.deserializeGroups(codes[1]);
-      if (g) state.groups = g;
-      else {
-         const k = StateSerializer.deserializeKnockout(codes[1]);
-         if (k && Object.keys(k.matches).length > 0) state.knockout = k;
-         else {
-             const old = StateSerializer.deserialize(codes[1]);
-             if (old) state.groups = old;
-         }
-      }
-    }
-    
-    if (codes[2]) {
-      const k = StateSerializer.deserializeKnockout(codes[2]);
-      if (k) state.knockout = k;
-      else {
-         const old = StateSerializer.deserialize(codes[2]);
-         if (old) state.knockout = old;
-      }
-    }
-
-    return state;
   }
 }

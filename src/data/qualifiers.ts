@@ -1,4 +1,4 @@
-import { QualifierOption } from '../types';
+import { QualifierOption, QualifiersState } from '../types';
 
 export const uefaPaths: QualifierOption[] = [
   {
@@ -35,3 +35,17 @@ export const intercontinentalKeys: QualifierOption[] = [
     teams: ['IRQ', 'BOL', 'SUR']
   }
 ];
+
+/** Winners assumed for each play-off slot until the user (or a shared URL) overrides them. */
+export const defaultQualifiers: QualifiersState = {
+  uefaPaths: {
+    pathA: 'BIH',
+    pathB: 'SWE',
+    pathC: 'TUR',
+    pathD: 'CZE'
+  },
+  intercontinentalKeys: {
+    keyA: 'COD',
+    keyB: 'IRQ'
+  }
+};

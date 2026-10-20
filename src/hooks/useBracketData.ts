@@ -1,41 +1,15 @@
 import { useMemo } from 'react';
 import { useTournamentStore } from '../store/useTournamentStore';
-import { initialGroups } from '../data/groups';
-import { generateGroupMatches, getQualifiedTeams } from '../utils/calculations';
+import { getQualifiedTeams } from '../utils/calculations';
 import { getKnockoutMatchups, generateBracket } from '../utils/knockoutLogic';
+import { buildGroupsWithTeams } from '../utils/groupResolution';
 import { KnockoutMatch } from '../types';
 
 export const useBracketData = () => {
   const { qualifiers, groups, knockout } = useTournamentStore();
 
   const bracketData = useMemo(() => {
-    // Reconstruct groups with teams
-    const groupsWithTeams = initialGroups.map(group => {
-      const resolvedTeams = group.teams.map(teamCode => {
-        if (teamCode === 'pathA') return qualifiers?.uefaPaths?.pathA || 'BIH';
-        if (teamCode === 'pathB') return qualifiers?.uefaPaths?.pathB || 'SWE';
-        if (teamCode === 'pathC') return qualifiers?.uefaPaths?.pathC || 'TUR';
-        if (teamCode === 'pathD') return qualifiers?.uefaPaths?.pathD || 'CZE';
-        if (teamCode === 'keyA') return qualifiers?.intercontinentalKeys?.keyA || 'COD';
-        if (teamCode === 'keyB') return qualifiers?.intercontinentalKeys?.keyB || 'IRQ';
-        return teamCode;
-      });
-      
-      // Reconstruct matches
-      const matches = generateGroupMatches(group.id, resolvedTeams as string[]);
-      return { ...group, teams: resolvedTeams as string[], matches, members: {} };
-    });
-
-    // Check if we have enough data (just basic check)
-    // If we have incomplete qualifiers, we can still generate bracket data if we have SOME groups.
-    // But for consistency, we only process valid teams.
-    if (!groupsWithTeams || groupsWithTeams.length === 0) return [];
-
-    // Filter out groups with incomplete teams to avoid errors, or just return empty bracket
-    if (groupsWithTeams.some(g => g.teams.some(t => !t))) {
-        // If incomplete, we can't calculate standings correctly -> no bracket
-        return [];
-    }
+    const groupsWithTeams = buildGroupsWithTeams(qualifiers);
 
     // Get qualified teams
     const { groupWinners, groupRunnersUp, bestThirds } = getQualifiedTeams(groupsWithTeams, groups.matches);

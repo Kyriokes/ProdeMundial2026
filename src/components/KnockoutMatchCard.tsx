@@ -4,6 +4,8 @@ import { countries } from '../data/countries';
 import { FlagIcon } from './FlagIcon';
 import clsx from 'clsx';
 import { generateMatchResult } from '../utils/randomizer';
+import { updateKnockoutScore, toggleKnockoutPenalty } from '../utils/knockoutResult';
+import { MAX_GOALS } from '../utils/goalInput';
 
 interface KnockoutMatchCardProps {
   match: KnockoutMatch;
@@ -26,39 +28,11 @@ export const KnockoutMatchCard: React.FC<KnockoutMatchCardProps> = ({ match, onU
   const awayTeam = match.awayTeam ? countries[match.awayTeam] : null;
 
   const handleScoreChange = (side: 'home' | 'away', value: string) => {
-    const num = value === '' ? undefined : parseInt(value);
-    const currentResult = match.result || { homeGoals: undefined, awayGoals: undefined };
-    const newResult = {
-      ...currentResult,
-      [side === 'home' ? 'homeGoals' : 'awayGoals']: num
-    };
-
-    // Auto-determine winner if scores distinct
-    let winner = undefined;
-    if (newResult.homeGoals !== undefined && newResult.awayGoals !== undefined) {
-      if (newResult.homeGoals > newResult.awayGoals) winner = match.homeTeam!;
-      else if (newResult.awayGoals > newResult.homeGoals) winner = match.awayTeam!;
-      else {
-        // Draw - check penalties
-        if (match.result?.penaltyWinner) winner = match.result.penaltyWinner === 'home' ? match.homeTeam! : match.awayTeam!;
-      }
-    }
-    
-    // We now always pass winner along with the result to the store
-    onUpdate({ ...newResult, winner });
+    onUpdate(updateKnockoutScore(match, side, value));
   };
 
   const handlePenaltyChange = (winnerSide: 'home' | 'away') => {
-    const isCurrentWinner = match.result?.penaltyWinner === winnerSide;
-    const penaltyWinner = isCurrentWinner ? undefined : winnerSide;
-    const winner = penaltyWinner === 'home' ? match.homeTeam : penaltyWinner === 'away' ? match.awayTeam : undefined;
-    
-    onUpdate({
-      ...match.result!,
-      isPenalty: !!penaltyWinner,
-      penaltyWinner,
-      winner
-    });
+    onUpdate(toggleKnockoutPenalty(match, winnerSide));
   };
 
   const isDraw = match.result?.homeGoals !== undefined && 
@@ -104,6 +78,7 @@ export const KnockoutMatchCard: React.FC<KnockoutMatchCardProps> = ({ match, onU
         <div className="flex items-center space-x-1 ml-1 flex-none">
           <input
             type="number"
+            max={MAX_GOALS}
             min="0"
             className="w-5 h-5 text-center border rounded text-[10px] bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white flex-none no-spinner"
             value={match.result?.homeGoals ?? ''}
@@ -144,6 +119,7 @@ export const KnockoutMatchCard: React.FC<KnockoutMatchCardProps> = ({ match, onU
         <div className="flex items-center space-x-1 ml-1 flex-none">
           <input
             type="number"
+            max={MAX_GOALS}
             min="0"
             className="w-5 h-5 text-center border rounded text-[10px] bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white flex-none no-spinner"
             value={match.result?.awayGoals ?? ''}

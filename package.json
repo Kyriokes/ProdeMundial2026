@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "check": "tsc -b --noEmit",
-    "test": "esbuild src/utils/calculations.test.ts --bundle --platform=node --format=esm --log-level=warning --outfile=node_modules/.tmp/calculations.test.mjs && node node_modules/.tmp/calculations.test.mjs"
+    "test": "vitest run && npm run test:rules",
+    "test:rules": "esbuild src/utils/calculations.test.ts --bundle --platform=node --format=esm --log-level=warning --outfile=node_modules/.tmp/calculations.test.mjs && node node_modules/.tmp/calculations.test.mjs"
   },
   "dependencies": {
     "@types/lz-string": "^1.3.34",
@@ -21,7 +22,6 @@
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.3.0",
     "sonner": "^2.0.7",
-    "tailwind-merge": "^3.0.2",
     "zustand": "^5.0.3"
   },
   "devDependencies": {
@@ -41,6 +41,7 @@
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.30.1",
     "vite": "^6.3.5",
-    "vite-tsconfig-paths": "^5.1.4"
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^5.0.5"
   }
 }

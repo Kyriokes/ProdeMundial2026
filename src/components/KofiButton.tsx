@@ -117,7 +117,6 @@ export const KofiButton: React.FC<KofiButtonProps> = ({
           }
         `}
       </style>
-      <link href='https://fonts.googleapis.com/css?family=Quicksand:400,700' rel='stylesheet' type='text/css' />
       <a 
         title={text} 
         className="kofi-button" 

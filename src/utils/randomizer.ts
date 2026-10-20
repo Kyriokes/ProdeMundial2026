@@ -1,7 +1,7 @@
-import { MatchResult, TournamentState, GroupsState, KnockoutState, KnockoutMatch } from '../types';
+import { MatchResult, TournamentState, GroupsState, KnockoutState, KnockoutMatch, QualifiersState } from '../types';
 import { countries } from '../data/countries';
-import { initialGroups } from '../data/groups';
-import { generateGroupMatches, getQualifiedTeams } from './calculations';
+import { getQualifiedTeams } from './calculations';
+import { buildGroupsWithTeams } from './groupResolution';
 import { getKnockoutMatchups, generateBracket } from './knockoutLogic';
 
 export const generateMatchResult = (homeTeamCode: string, awayTeamCode: string, isKnockout: boolean = false): MatchResult & { winner?: string } => {
@@ -131,7 +131,6 @@ export const generateMatchResult = (homeTeamCode: string, awayTeamCode: string, 
         
         // Ensure winner has at least +1
         const minWinnerGoals = Math.floor(totalGoals / 2) + 1;
-        const extraGoals = totalGoals - minWinnerGoals;
         
         // Randomly distribute the rest, but bias towards winner slightly?
         // Actually, just giving minWinnerGoals guarantees win.
@@ -255,7 +254,7 @@ function deriveKnockoutOutcome(
     return { winner, loser };
 }
 
-export const randomizeTournament = (currentQualifiers: any): TournamentState => {
+export const randomizeTournament = (currentQualifiers: QualifiersState): TournamentState => {
     // 1. Qualifiers
     const newQualifiers = currentQualifiers;
 
@@ -264,21 +263,7 @@ export const randomizeTournament = (currentQualifiers: any): TournamentState => 
         matches: {}
     };
 
-    // Reconstruct groups with teams
-    const groupsWithTeams = initialGroups.map(group => {
-        const resolvedTeams = group.teams.map(teamCode => {
-            if (teamCode === 'pathA') return newQualifiers?.uefaPaths?.pathA || 'BIH';
-            if (teamCode === 'pathB') return newQualifiers?.uefaPaths?.pathB || 'SWE';
-            if (teamCode === 'pathC') return newQualifiers?.uefaPaths?.pathC || 'TUR';
-            if (teamCode === 'pathD') return newQualifiers?.uefaPaths?.pathD || 'CZE';
-            if (teamCode === 'keyA') return newQualifiers?.intercontinentalKeys?.keyA || 'COD';
-            if (teamCode === 'keyB') return newQualifiers?.intercontinentalKeys?.keyB || 'IRQ';
-            return teamCode;
-        });
-        
-        const matches = generateGroupMatches(group.id, resolvedTeams as string[]);
-        return { ...group, teams: resolvedTeams as string[], matches, members: {} };
-    });
+    const groupsWithTeams = buildGroupsWithTeams(newQualifiers);
 
     // Generate matches
     groupsWithTeams.forEach(group => {

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useTournamentStore } from '../store/useTournamentStore';
-import { initialGroups } from '../data/groups';
-import { calculateGroupStandings, compareThirdPlace, generateGroupMatches } from '../utils/calculations';
+import { calculateGroupStandings, compareThirdPlace } from '../utils/calculations';
+import { buildGroupsWithTeams } from '../utils/groupResolution';
 import { countries } from '../data/countries';
 import { FlagIcon } from './FlagIcon';
 import { GroupMember } from '../types';
@@ -12,39 +12,10 @@ export const ThirdPlaceTable: React.FC = () => {
     const thirdPlaces = useMemo(() => {
         const thirds: Array<GroupMember & { groupName: string }> = [];
 
-        initialGroups.forEach(group => {
-             // Resolve teams (handling placeholders if any, similar to GroupsPage)
-             const resolvedTeams = group.teams.map(teamCode => {
-                if (teamCode === 'pathA') return qualifiers?.uefaPaths?.pathA || 'BIH';
-                if (teamCode === 'pathB') return qualifiers?.uefaPaths?.pathB || 'SWE';
-                if (teamCode === 'pathC') return qualifiers?.uefaPaths?.pathC || 'TUR';
-                if (teamCode === 'pathD') return qualifiers?.uefaPaths?.pathD || 'CZE';
-                if (teamCode === 'keyA') return qualifiers?.intercontinentalKeys?.keyA || 'COD';
-                if (teamCode === 'keyB') return qualifiers?.intercontinentalKeys?.keyB || 'IRQ';
-                return teamCode;
-            });
-
-            // Skip if any team is undefined
-            if (resolvedTeams.some(t => !t)) return;
-
-            const teams = resolvedTeams as string[];
-            const matches = generateGroupMatches(group.id, teams);
-            
-            // Construct a Group object that satisfies the interface required by calculateGroupStandings
-            const groupWithMatches = { 
-                ...group, 
-                teams,
-                matches,
-                members: {} // Placeholder, not used by calculateGroupStandings for input
-            };
-            
-            const standings = calculateGroupStandings(groupWithMatches, groups.matches);
-            
+        buildGroupsWithTeams(qualifiers).forEach(group => {
+            const standings = calculateGroupStandings(group, groups.matches);
             if (standings.length >= 3) {
-                thirds.push({
-                    ...standings[2],
-                    groupName: group.name
-                });
+                thirds.push({ ...standings[2], groupName: group.name });
             }
         });
 

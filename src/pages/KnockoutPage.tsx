@@ -1,16 +1,13 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useTournamentStore } from '../store/useTournamentStore';
 import { countries } from '../data/countries';
 import { KnockoutMatchCard } from '../components/KnockoutMatchCard';
 import { MatchResult, KnockoutMatch } from '../types';
-import { useNavigate } from 'react-router-dom';
-import { FlagIcon } from '../components/FlagIcon';
 import { useBracketData } from '../hooks/useBracketData';
 import { MobileKnockoutView } from '../components/MobileKnockoutView';
 
 export const KnockoutPage: React.FC = () => {
   const { setKnockoutMatch } = useTournamentStore();
-  const navigate = useNavigate();
 
   // 1. Reconstruct group stage state to determine qualifiers
   const bracketData = useBracketData();

@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Trophy, ListOrdered, GitBranch, ArrowRight, Dices, Eraser, Share2, Coffee, LayoutGrid } from 'lucide-react';
+import { X, Trophy, ListOrdered, GitBranch, ArrowRight, Dices, Eraser, Share2, Coffee } from 'lucide-react';
 
 interface InstructionsModalProps {
   isOpen: boolean;

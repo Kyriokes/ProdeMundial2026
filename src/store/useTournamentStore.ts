@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { TournamentState, QualifiersState, GroupsState, KnockoutState, MatchResult } from '../types';
+import { TournamentState, MatchResult } from '../types';
+import { defaultQualifiers } from '../data/qualifiers';
 
 interface TournamentStore extends TournamentState {
   setQualifier: (pathId: string, countryCode: string, isIntercontinental?: boolean) => void;
@@ -10,18 +11,7 @@ interface TournamentStore extends TournamentState {
 }
 
 const initialState: TournamentState = {
-  qualifiers: {
-    uefaPaths: {
-      pathA: 'BIH',
-      pathB: 'SWE',
-      pathC: 'TUR',
-      pathD: 'CZE'
-    },
-    intercontinentalKeys: {
-      keyA: 'COD',
-      keyB: 'IRQ'
-    }
-  },
+  qualifiers: defaultQualifiers,
   groups: {
     matches: {}
   },

@@ -1,4 +1,4 @@
-import { Group, Match, GroupMember, Country, MatchResult } from '../types';
+import { Group, Match, GroupMember, MatchResult } from '../types';
 import { countries } from '../data/countries';
 
 export const POINTS_WIN = 3;
