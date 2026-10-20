@@ -37,6 +37,7 @@ Vite imprime la URL local en la terminal (por defecto `http://localhost:5173`).
 | `npm run build` | Chequeo de tipos (`tsc -b`) y build de producción en `dist/` |
 | `npm run preview` | Sirve el build de producción localmente |
 | `npm run check` | Chequeo de tipos sin generar archivos |
+| `npm test` | Tests de los desempates de grupo (`src/utils/calculations.test.ts`) |
 | `npm run lint` | ESLint sobre todo el proyecto |
 
 ## Cómo se usa
@@ -66,15 +67,15 @@ La pantalla de selección de clasificados (`src/pages/QualifiersPage.tsx`) sigue
 
 ### Fase de grupos
 
-Victoria 3 puntos, empate 1, derrota 0. Si dos o más equipos empatan en puntos, el código desempata en este orden (`src/utils/calculations.ts`, `resolveTies`):
+Victoria 3 puntos, empate 1, derrota 0. Si dos o más equipos empatan en puntos, se desempata en este orden, que sigue el Artículo 13 del reglamento oficial ([`public/wc-2026-regulations.pdf`](public/wc-2026-regulations.pdf)); la lógica está en `src/utils/calculations.ts`, función `resolveTies`:
 
-1. Diferencia de gol en todos los partidos del grupo
-2. Goles a favor en todos los partidos del grupo
-3. Resultados entre los equipos empatados (puntos, diferencia de gol y goles a favor en esos partidos)
+1. Resultados entre los equipos empatados: puntos, diferencia de gol y goles a favor en los partidos que jugaron entre sí. Si siguen igualados, se repite sobre los que quedan, mirando solo los partidos entre ellos
+2. Diferencia de gol en todos los partidos del grupo
+3. Goles a favor en todos los partidos del grupo
 4. Fair play: amarilla −1, doble amarilla −3, roja directa −4 (más cerca de 0 es mejor)
 5. Ranking FIFA
 
-> **Ojo:** el reglamento oficial (Artículo 13, incluido en [`public/wc-2026-regulations.pdf`](public/wc-2026-regulations.pdf)) aplica el enfrentamiento directo *antes* que la diferencia de gol y los goles a favor generales. La app todavía sigue el orden de arriba, así que en algunos empates puede diferir del resultado oficial.
+Los criterios 2 a 4 se aplican en secuencia sobre los equipos que siguen empatados, sin volver al enfrentamiento directo.
 
 ### Clasificación a eliminatorias
 

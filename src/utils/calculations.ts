@@ -131,22 +131,25 @@ function resolveTies(members: GroupMember[], groupMatches: Match[], allMatches: 
 
   let currentTiers: string[][] = initialTiers.map(tier => tier.map(m => m.countryCode));
 
-  // Step 1: Global Goal Difference
-  currentTiers = applyCriteria(currentTiers, membersByCode, m => m.goalDifference, true);
-
-  // Step 2: Global Goals For
-  currentTiers = applyCriteria(currentTiers, membersByCode, m => m.goalsFor, true);
-
-  // Step 3: Head-to-Head (Mini-league)
+  // Order of FIFA World Cup 2026 Regulations, Article 13.
+  // Step 1 (and the recursive part of step 2): Head-to-Head (Mini-league)
   currentTiers = currentTiers.flatMap(tier => {
     if (tier.length <= 1) return [tier];
     return resolveHeadToHeadTiers(tier, groupMatches, allMatches);
   });
 
-  // Step 4: Fair Play Points
+  // Step 2, criteria d) to f) are applied in sequence to the teams still tied,
+  // without going back to head-to-head after any of them.
+  // d) Global Goal Difference
+  currentTiers = applyCriteria(currentTiers, membersByCode, m => m.goalDifference, true);
+
+  // e) Global Goals For
+  currentTiers = applyCriteria(currentTiers, membersByCode, m => m.goalsFor, true);
+
+  // f) Fair Play Points
   currentTiers = applyCriteria(currentTiers, membersByCode, m => m.fairPlayPoints, true);
 
-  // Step 5: FIFA Ranking (Drawing of lots equivalent)
+  // Step 3: FIFA Ranking
   currentTiers = applyCriteria(currentTiers, membersByCode, m => getFifaRanking(m.countryCode), false);
 
   return currentTiers.flat().map(code => membersByCode[code]);

@@ -1,5 +1,7 @@
 # Documentación y Verificación de Reglas de Desempate
 
+> **Nota (desactualizado):** este análisis describe el orden anterior, que aplicaba la diferencia de gol y los goles a favor generales *antes* que el enfrentamiento directo. Desde entonces el código sigue el Artículo 13 del reglamento oficial, que pone el enfrentamiento directo primero. Con el orden actual, un triple empate como el del Grupo I se resuelve primero por los partidos entre las tres selecciones. El orden vigente está en `explicacion_reglas_fase_grupos.md`.
+
 ## Objetivo
 Documentar claramente las reglas de desempate de la fase de grupos y explicar casos complejos (como el triple empate en el Grupo I) para confirmar que la lógica aplicada es la correcta según estándares FIFA.
 

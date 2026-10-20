@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "check": "tsc -b --noEmit"
+    "check": "tsc -b --noEmit",
+    "test": "esbuild src/utils/calculations.test.ts --bundle --platform=node --format=esm --log-level=warning --outfile=node_modules/.tmp/calculations.test.mjs && node node_modules/.tmp/calculations.test.mjs"
   },
   "dependencies": {
     "@types/lz-string": "^1.3.34",

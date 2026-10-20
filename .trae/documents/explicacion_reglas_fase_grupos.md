@@ -33,18 +33,21 @@ Se restan puntos según las tarjetas recibidas:
 *(Nota: Un valor más cercano a 0 es mejor).*
 
 ## 4. Criterios de Desempate (Tiebreakers)
-Si dos o más equipos empatan en puntos al finalizar la fase de grupos, se ordenan según los siguientes criterios de prioridad (de mayor a menor importancia):
+Si dos o más equipos empatan en puntos al finalizar la fase de grupos, se ordenan según los siguientes criterios de prioridad (de mayor a menor importancia). El orden sigue el Artículo 13 del reglamento oficial (`public/wc-2026-regulations.pdf`):
 
-1.  **Mayor Diferencia de Gol (DG)** en todos los partidos del grupo.
-2.  **Mayor cantidad de Goles a Favor (GF)** en todos los partidos del grupo.
-3.  **Resultado entre sí (Head-to-Head)**:
-    - Puntos obtenidos en el partido jugado entre los equipos empatados.
-    - Diferencia de gol en el partido entre ellos.
-    - Goles a favor en el partido entre ellos.
+1.  **Resultado entre sí (Head-to-Head)**, mirando solo los partidos jugados entre los equipos empatados:
+    - Puntos obtenidos en esos partidos.
+    - Diferencia de gol en esos partidos.
+    - Goles a favor en esos partidos.
+    - Si tras esto siguen igualados, se repiten los tres puntos anteriores sobre los equipos que quedan, considerando únicamente los partidos entre ellos.
+2.  **Mayor Diferencia de Gol (DG)** en todos los partidos del grupo.
+3.  **Mayor cantidad de Goles a Favor (GF)** en todos los partidos del grupo.
 4.  **Puntos Fair Play** (el que tenga más puntos, es decir, menos tarjetas).
 5.  **Ranking FIFA** (el que tenga mejor ranking, es decir, menor número).
 
-*Referencia en código: `src/utils/calculations.ts` - función `resolveTies`.*
+Los criterios 2, 3 y 4 se aplican en secuencia sobre los equipos que siguen empatados: si uno de ellos separa a algunos pero no a todos, los que quedan pasan al criterio siguiente, **sin volver al Head-to-Head**.
+
+*Referencia en código: `src/utils/calculations.ts` - función `resolveTies`. Tests: `src/utils/calculations.test.ts` (`npm test`).*
 
 ## 5. Clasificación a Eliminatorias (Knockout)
 Clasifican a la ronda de 32avos (Round of 32) un total de **32 equipos**:
