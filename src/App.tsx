@@ -300,6 +300,18 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <span className="font-medium">Prode Mundial 2026</span> - Simulador No Oficial
             <span className="hidden md:inline mx-2">•</span>
             <span className="block md:inline">Este sitio no está afiliado a la FIFA. Es una herramienta de fans para fans.</span>
+            <span className="hidden md:inline mx-2">•</span>
+            <span className="block md:inline">
+              Hecho por{' '}
+              <a
+                href="https://portfoliosergiofb.vercel.app/es"
+                target="_blank"
+                rel="noopener"
+                className="font-medium hover:underline"
+              >
+                Sergio Ferrari Bryce
+              </a>
+            </span>
           </div>
           <KofiButton color="#72a4f2" text="Invitame un Cafecito" kofiId="R5R21UFJBX" />
         </div>
